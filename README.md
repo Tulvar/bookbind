@@ -2,7 +2,7 @@
 
 `bookbind` converts MP3 audiobook files into M4B.
 
-Current milestone: `v0.1.0`.
+Current milestone: `v0.2.0`.
 
 The current focus is a reliable Go core that can be reused by CLI, tests, and
 the future desktop UI.
@@ -93,3 +93,21 @@ go build ./cmd/bookbind
 
 `ffmpeg` and `ffprobe` must be available on `PATH` for real inspect/convert
 runs.
+
+## Milestones
+
+### v0.2.0
+
+- metadata template generation
+- filename parser for common audiobook naming patterns
+- embedded MP3 tags in templates
+- synthetic chapters via `--chapter-every`
+- richer `inspect` output for metadata and chapters
+
+### v0.1.0
+
+- MP3 and MP3 directory conversion to M4B
+- chapters from files
+- local cover support
+- manual metadata YAML
+- dry-run and overwrite protection
