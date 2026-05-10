@@ -39,6 +39,34 @@ func TestTemplateMetadataWritesDefaultYAML(t *testing.T) {
 	}
 }
 
+func TestTemplateMetadataUsesFilenameParser(t *testing.T) {
+	dir := t.TempDir()
+	inputPath := filepath.Join(dir, "Сергей Лукьяненко - Дозоры 01 - Ночной дозор.mp3")
+	if err := os.WriteFile(inputPath, []byte("test"), 0o644); err != nil {
+		t.Fatalf("write input file: %v", err)
+	}
+
+	result, err := newTestApp().TemplateMetadata(context.Background(), TemplateRequest{
+		InputPath: inputPath,
+	})
+	if err != nil {
+		t.Fatalf("TemplateMetadata() error = %v", err)
+	}
+
+	if got, want := result.Book.Author, "Сергей Лукьяненко"; got != want {
+		t.Fatalf("Author = %q, want %q", got, want)
+	}
+	if got, want := result.Book.Series, "Дозоры"; got != want {
+		t.Fatalf("Series = %q, want %q", got, want)
+	}
+	if got, want := result.Book.SeriesIndex, "01"; got != want {
+		t.Fatalf("SeriesIndex = %q, want %q", got, want)
+	}
+	if got, want := result.Book.Title, "Ночной дозор"; got != want {
+		t.Fatalf("Title = %q, want %q", got, want)
+	}
+}
+
 func TestTemplateMetadataDetectsLocalCover(t *testing.T) {
 	dir := t.TempDir()
 	inputPath := filepath.Join(dir, "book.mp3")

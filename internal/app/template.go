@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/Tulvar/bookbind/internal/filename"
 	"github.com/Tulvar/bookbind/internal/metadata"
 )
 
@@ -38,11 +39,12 @@ func (a *App) TemplateMetadata(ctx context.Context, req TemplateRequest) (Templa
 		return TemplateResult{}, err
 	}
 
-	book := metadata.Book{
-		Title:    defaultTitle(input.Path),
-		Language: "ru",
-		Cover:    defaultCover(metadataTemplateDir(outputPath)),
+	book := filename.ParsePath(input.Path)
+	if book.Title == "" {
+		book.Title = defaultTitle(input.Path)
 	}
+	book.Language = "ru"
+	book.Cover = defaultCover(metadataTemplateDir(outputPath))
 
 	data, err := metadata.MarshalTemplateYAML(book)
 	if err != nil {
