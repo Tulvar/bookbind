@@ -17,6 +17,7 @@ type ConvertRequest struct {
 	OutputPath   string
 	MetadataPath string
 	CoverPath    string
+	ChapterEvery string
 	DryRun       bool
 	Overwrite    bool
 }
@@ -26,6 +27,7 @@ type ConvertResult struct {
 	Metadata     metadata.Book
 	MetadataPath string
 	CoverPath    string
+	ChapterEvery string
 	OutputPath   string
 	DryRun       bool
 	Command      []string
@@ -60,14 +62,19 @@ func (a *App) Convert(ctx context.Context, req ConvertRequest) (ConvertResult, e
 	if err != nil {
 		return ConvertResult{}, err
 	}
+	chapterEvery, err := parseChapterInterval(req.ChapterEvery)
+	if err != nil {
+		return ConvertResult{}, err
+	}
 
 	build, err := a.builder.Build(ctx, m4b.BuildRequest{
-		Input:      input,
-		Metadata:   book,
-		CoverPath:  coverPath,
-		OutputPath: outputPath,
-		Overwrite:  req.Overwrite,
-		DryRun:     req.DryRun,
+		Input:        input,
+		Metadata:     book,
+		CoverPath:    coverPath,
+		OutputPath:   outputPath,
+		Overwrite:    req.Overwrite,
+		DryRun:       req.DryRun,
+		ChapterEvery: chapterEvery,
 	})
 	if err != nil {
 		return ConvertResult{}, err
@@ -78,6 +85,7 @@ func (a *App) Convert(ctx context.Context, req ConvertRequest) (ConvertResult, e
 		Metadata:     book,
 		MetadataPath: req.MetadataPath,
 		CoverPath:    coverPath,
+		ChapterEvery: req.ChapterEvery,
 		OutputPath:   outputPath,
 		DryRun:       req.DryRun,
 		Command:      build.Command,

@@ -85,6 +85,42 @@ func TestBuildSingleFileWithCoverMapsAttachedPicture(t *testing.T) {
 	}
 }
 
+func TestBuildSingleFileWithSyntheticChaptersMapsChapters(t *testing.T) {
+	builder := NewBuilder("ffmpeg")
+
+	result, err := builder.Build(context.Background(), BuildRequest{
+		Input: audio.Input{
+			Files: []audio.File{{Path: "book.mp3", Duration: 25 * time.Minute}},
+		},
+		OutputPath:   "book.m4b",
+		ChapterEvery: 10 * time.Minute,
+		DryRun:       true,
+	})
+	if err != nil {
+		t.Fatalf("Build() error = %v", err)
+	}
+
+	if !containsInOrder(result.Command, "-map_metadata", "1", "-c:a", "aac", "-map_chapters", "1") {
+		t.Fatalf("command does not map synthetic chapters: %#v", result.Command)
+	}
+}
+
+func TestBuildSingleFileWithSyntheticChaptersRequiresDuration(t *testing.T) {
+	builder := NewBuilder("ffmpeg")
+
+	_, err := builder.Build(context.Background(), BuildRequest{
+		Input: audio.Input{
+			Files: []audio.File{{Path: "book.mp3"}},
+		},
+		OutputPath:   "book.m4b",
+		ChapterEvery: 10 * time.Minute,
+		DryRun:       true,
+	})
+	if err == nil {
+		t.Fatal("Build() error = nil, want error")
+	}
+}
+
 func TestBuildDirectoryUsesConcatDemuxer(t *testing.T) {
 	builder := NewBuilder("ffmpeg")
 
