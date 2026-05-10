@@ -3,6 +3,7 @@ package metadata
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -41,6 +42,24 @@ description: |
 	}
 }
 
+func TestLoadYAMLAllowsEmptyPublishedYear(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "bookbind.yaml")
+	data := []byte(`title: "Night Watch"
+published_year: ""
+`)
+	if err := os.WriteFile(path, data, 0o644); err != nil {
+		t.Fatalf("write metadata: %v", err)
+	}
+
+	book, err := LoadYAML(path)
+	if err != nil {
+		t.Fatalf("LoadYAML() error = %v", err)
+	}
+	if book.PublishedYear != 0 {
+		t.Fatalf("PublishedYear = %d, want 0", book.PublishedYear)
+	}
+}
+
 func TestBookEmpty(t *testing.T) {
 	empty := Book{}
 	withTitle := Book{Title: "Book"}
@@ -50,5 +69,32 @@ func TestBookEmpty(t *testing.T) {
 	}
 	if withTitle.Empty() {
 		t.Fatal("book with title was empty")
+	}
+}
+
+func TestMarshalTemplateYAML(t *testing.T) {
+	data, err := MarshalTemplateYAML(Book{
+		Title:    "Night Watch",
+		Language: "ru",
+		Cover:    "cover.jpg",
+	})
+	if err != nil {
+		t.Fatalf("MarshalTemplateYAML() error = %v", err)
+	}
+
+	got := string(data)
+	for _, want := range []string{
+		"title: Night Watch",
+		"author: \"\"",
+		"published_year: \"\"",
+		"cover: cover.jpg",
+		"chapters_from_files: true",
+	} {
+		if !strings.Contains(got, want) {
+			t.Fatalf("template does not contain %q:\n%s", want, got)
+		}
+	}
+	if strings.Contains(got, "authors:") {
+		t.Fatalf("template should not contain authors array:\n%s", got)
 	}
 }
