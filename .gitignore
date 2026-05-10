@@ -1,0 +1,17 @@
+.DS_Store
+
+# Go
+bin/
+*.test
+coverage.out
+
+# bookbind outputs
+/bookbind
+*.m4b
+*.ffmetadata
+bookbind.db
+
+# Wails/frontend outputs
+build/
+dist/
+node_modules/
