@@ -109,6 +109,7 @@ func (i *Inspector) inspectFile(ctx context.Context, path string) ([]File, error
 		Codec:    probe.Codec,
 		Bitrate:  probe.Bitrate,
 		Channels: probe.Channels,
+		Tags:     probe.Tags,
 	}}, nil
 }
 

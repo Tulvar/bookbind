@@ -178,22 +178,29 @@ func TestConvertRejectsUnsupportedCoverExtension(t *testing.T) {
 }
 
 func newTestApp() *App {
+	return newTestAppWithProber(testProber{})
+}
+
+func newTestAppWithProber(prober testProber) *App {
 	builder := m4b.NewBuilder("ffmpeg")
 	builder.Runner = testRunner{}
 	return New(
-		WithInspector(audio.NewInspector(audio.WithProber(testProber{}))),
+		WithInspector(audio.NewInspector(audio.WithProber(prober))),
 		WithBuilder(builder),
 	)
 }
 
-type testProber struct{}
+type testProber struct {
+	tags audio.EmbeddedTags
+}
 
-func (testProber) Probe(context.Context, string) (audio.ProbeResult, error) {
+func (p testProber) Probe(context.Context, string) (audio.ProbeResult, error) {
 	return audio.ProbeResult{
 		Duration: 3 * time.Second,
 		Codec:    "mp3",
 		Bitrate:  128000,
 		Channels: 2,
+		Tags:     p.tags,
 	}, nil
 }
 

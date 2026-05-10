@@ -75,5 +75,9 @@ func (fakeProber) Probe(context.Context, string) (ProbeResult, error) {
 		Codec:    "mp3",
 		Bitrate:  128000,
 		Channels: 2,
+		Tags: EmbeddedTags{
+			Title:  "Embedded Title",
+			Artist: "Embedded Artist",
+		},
 	}, nil
 }
