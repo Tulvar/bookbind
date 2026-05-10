@@ -23,6 +23,9 @@ go run ./cmd/bookbind template ./book.mp3
 go run ./cmd/bookbind template ./book-directory --output ./bookbind.yaml
 ```
 
+The template command tries to infer `title`, `author`, `series`, and
+`series_index` from common filename patterns.
+
 Convert a single MP3 file or a directory with MP3 files:
 
 ```bash
