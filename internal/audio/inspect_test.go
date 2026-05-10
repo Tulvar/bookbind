@@ -41,6 +41,21 @@ func TestInspectRejectsNonMP3File(t *testing.T) {
 	}
 }
 
+func TestInspectAcceptsM4BFile(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "book.m4b")
+	writeTestFile(t, path)
+
+	input, err := NewInspector(WithProber(fakeProber{})).Inspect(context.Background(), path)
+	if err != nil {
+		t.Fatalf("Inspect() error = %v", err)
+	}
+
+	if got, want := input.Files[0].Name, "book.m4b"; got != want {
+		t.Fatalf("Name = %q, want %q", got, want)
+	}
+}
+
 func TestInspectFileAddsProbeData(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "book.mp3")
@@ -78,6 +93,9 @@ func (fakeProber) Probe(context.Context, string) (ProbeResult, error) {
 		Tags: EmbeddedTags{
 			Title:  "Embedded Title",
 			Artist: "Embedded Artist",
+		},
+		Chapters: []Chapter{
+			{Title: "Intro", Start: 0, End: time.Minute},
 		},
 	}, nil
 }

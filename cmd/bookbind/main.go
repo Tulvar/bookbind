@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/Tulvar/bookbind/internal/app"
+	"github.com/Tulvar/bookbind/internal/audio"
 	"github.com/Tulvar/bookbind/pkg/version"
 )
 
@@ -117,8 +118,54 @@ func runInspect(ctx context.Context, application *app.App, args []string, stdout
 			fmt.Fprint(stdout, ")")
 		}
 		fmt.Fprintln(stdout)
+		printEmbeddedTags(stdout, file.Tags)
+		printChapters(stdout, file.Chapters)
 	}
 	return nil
+}
+
+func printEmbeddedTags(stdout io.Writer, tags audio.EmbeddedTags) {
+	if tags.Title == "" &&
+		tags.Artist == "" &&
+		tags.Album == "" &&
+		tags.Composer == "" &&
+		tags.Genre == "" &&
+		tags.Date == "" &&
+		tags.Comment == "" &&
+		tags.Language == "" {
+		return
+	}
+
+	fmt.Fprintln(stdout, "    Embedded metadata:")
+	printTag(stdout, "title", tags.Title)
+	printTag(stdout, "artist", tags.Artist)
+	printTag(stdout, "album", tags.Album)
+	printTag(stdout, "composer", tags.Composer)
+	printTag(stdout, "genre", tags.Genre)
+	printTag(stdout, "date", tags.Date)
+	printTag(stdout, "language", tags.Language)
+	printTag(stdout, "comment", tags.Comment)
+}
+
+func printTag(stdout io.Writer, name, value string) {
+	if value != "" {
+		fmt.Fprintf(stdout, "      %s: %s\n", name, value)
+	}
+}
+
+func printChapters(stdout io.Writer, chapters []audio.Chapter) {
+	if len(chapters) == 0 {
+		return
+	}
+
+	fmt.Fprintf(stdout, "    Chapters: %d\n", len(chapters))
+	for _, chapter := range chapters {
+		fmt.Fprintf(stdout, "      - %s", chapter.Title)
+		if chapter.End > 0 {
+			fmt.Fprintf(stdout, " (%s - %s)", formatTimecode(chapter.Start), formatTimecode(chapter.End))
+		}
+		fmt.Fprintln(stdout)
+	}
 }
 
 func runConvert(ctx context.Context, application *app.App, args []string, stdout io.Writer) error {
@@ -207,6 +254,18 @@ func formatDuration(duration time.Duration) string {
 		return fmt.Sprintf("%dh%02dm%02ds", hours, minutes, seconds)
 	}
 	return fmt.Sprintf("%dm%02ds", minutes, seconds)
+}
+
+func formatTimecode(duration time.Duration) string {
+	duration = duration.Round(time.Millisecond)
+	hours := int(duration.Hours())
+	minutes := int(duration.Minutes()) % 60
+	seconds := int(duration.Seconds()) % 60
+	millis := int(duration.Milliseconds()) % 1000
+	if hours > 0 {
+		return fmt.Sprintf("%d:%02d:%02d.%03d", hours, minutes, seconds, millis)
+	}
+	return fmt.Sprintf("%02d:%02d.%03d", minutes, seconds, millis)
 }
 
 func reorderFlagArgs(args []string, valueFlags map[string]bool) []string {
