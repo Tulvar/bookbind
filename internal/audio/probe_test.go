@@ -48,3 +48,20 @@ func TestEmbeddedTagsNormalizesKeys(t *testing.T) {
 		t.Fatalf("Date = %q", got.Date)
 	}
 }
+
+func TestChaptersParsesFFProbeChapters(t *testing.T) {
+	got := chapters([]ffprobeChapter{
+		{StartTime: "0.000000", EndTime: "60.000000", Tags: ffTags{"title": "Intro"}},
+		{StartTime: "60.000000", EndTime: "120.000000"},
+	})
+
+	if len(got) != 2 {
+		t.Fatalf("len = %d, want 2", len(got))
+	}
+	if got[0].Title != "Intro" || got[0].Start != 0 || got[0].End != time.Minute {
+		t.Fatalf("first chapter = %#v", got[0])
+	}
+	if got[1].Title != "Chapter 002" || got[1].Start != time.Minute || got[1].End != 2*time.Minute {
+		t.Fatalf("second chapter = %#v", got[1])
+	}
+}

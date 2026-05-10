@@ -16,6 +16,7 @@ type File struct {
 	Bitrate  int
 	Channels int
 	Tags     EmbeddedTags
+	Chapters []Chapter
 }
 
 type ProbeResult struct {
@@ -24,6 +25,7 @@ type ProbeResult struct {
 	Bitrate  int
 	Channels int
 	Tags     EmbeddedTags
+	Chapters []Chapter
 }
 
 type EmbeddedTags struct {
@@ -36,4 +38,10 @@ type EmbeddedTags struct {
 	Date        string
 	Comment     string
 	Language    string
+}
+
+type Chapter struct {
+	Title string
+	Start time.Duration
+	End   time.Duration
 }

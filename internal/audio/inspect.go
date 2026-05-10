@@ -75,7 +75,7 @@ func (i *Inspector) inspectDirectory(ctx context.Context, dir string) ([]File, e
 			continue
 		}
 		path := filepath.Join(dir, entry.Name())
-		if !isMP3(path) {
+		if !isSupportedAudio(path) {
 			continue
 		}
 		file, err := i.inspectFile(ctx, path)
@@ -93,8 +93,8 @@ func (i *Inspector) inspectDirectory(ctx context.Context, dir string) ([]File, e
 }
 
 func (i *Inspector) inspectFile(ctx context.Context, path string) ([]File, error) {
-	if !isMP3(path) {
-		return nil, fmt.Errorf("input file must be an mp3: %s", path)
+	if !isSupportedAudio(path) {
+		return nil, fmt.Errorf("input file must be .mp3, .m4a, or .m4b: %s", path)
 	}
 
 	probe, err := i.probe(ctx, path)
@@ -110,6 +110,7 @@ func (i *Inspector) inspectFile(ctx context.Context, path string) ([]File, error
 		Bitrate:  probe.Bitrate,
 		Channels: probe.Channels,
 		Tags:     probe.Tags,
+		Chapters: probe.Chapters,
 	}}, nil
 }
 
@@ -120,6 +121,11 @@ func (i *Inspector) probe(ctx context.Context, path string) (ProbeResult, error)
 	return i.prober.Probe(ctx, path)
 }
 
-func isMP3(path string) bool {
-	return strings.EqualFold(filepath.Ext(path), ".mp3")
+func isSupportedAudio(path string) bool {
+	switch strings.ToLower(filepath.Ext(path)) {
+	case ".mp3", ".m4a", ".m4b":
+		return true
+	default:
+		return false
+	}
 }

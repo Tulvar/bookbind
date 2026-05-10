@@ -30,6 +30,7 @@ func (p *FFProbe) Probe(ctx context.Context, path string) (ProbeResult, error) {
 	cmd := exec.CommandContext(ctx, p.Path,
 		"-v", "error",
 		"-print_format", "json",
+		"-show_chapters",
 		"-show_format",
 		"-show_streams",
 		path,
@@ -68,12 +69,14 @@ func (p *FFProbe) Probe(ctx context.Context, path string) (ProbeResult, error) {
 		Bitrate:  bitrate,
 		Channels: audioStream.Channels,
 		Tags:     embeddedTags(data.Format.Tags),
+		Chapters: chapters(data.Chapters),
 	}, nil
 }
 
 type ffprobeOutput struct {
-	Streams []ffprobeStream `json:"streams"`
-	Format  ffprobeFormat   `json:"format"`
+	Streams  []ffprobeStream  `json:"streams"`
+	Format   ffprobeFormat    `json:"format"`
+	Chapters []ffprobeChapter `json:"chapters"`
 }
 
 type ffprobeStream struct {
@@ -91,6 +94,12 @@ type ffprobeFormat struct {
 }
 
 type ffTags map[string]string
+
+type ffprobeChapter struct {
+	StartTime string `json:"start_time"`
+	EndTime   string `json:"end_time"`
+	Tags      ffTags `json:"tags"`
+}
 
 func (o ffprobeOutput) firstAudioStream() ffprobeStream {
 	for _, stream := range o.Streams {
@@ -148,4 +157,20 @@ func tagValue(tags ffTags, names ...string) string {
 		}
 	}
 	return ""
+}
+
+func chapters(values []ffprobeChapter) []Chapter {
+	result := make([]Chapter, 0, len(values))
+	for i, value := range values {
+		title := tagValue(value.Tags, "title")
+		if title == "" {
+			title = fmt.Sprintf("Chapter %03d", i+1)
+		}
+		result = append(result, Chapter{
+			Title: title,
+			Start: parseDuration(value.StartTime),
+			End:   parseDuration(value.EndTime),
+		})
+	}
+	return result
 }

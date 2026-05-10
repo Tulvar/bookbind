@@ -1,6 +1,13 @@
 package main
 
-import "testing"
+import (
+	"bytes"
+	"strings"
+	"testing"
+	"time"
+
+	"github.com/Tulvar/bookbind/internal/audio"
+)
 
 func TestReorderFlagArgsAllowsFlagsAfterPositional(t *testing.T) {
 	got := reorderFlagArgs(
@@ -69,6 +76,44 @@ func TestReorderFlagArgsAllowsChapterEveryAfterPositional(t *testing.T) {
 	for i := range got {
 		if got[i] != want[i] {
 			t.Fatalf("got[%d] = %q, want %q: %#v", i, got[i], want[i], got)
+		}
+	}
+}
+
+func TestPrintEmbeddedTags(t *testing.T) {
+	var buffer bytes.Buffer
+
+	printEmbeddedTags(&buffer, audio.EmbeddedTags{
+		Title:  "Night Watch",
+		Artist: "Sergey Lukyanenko",
+	})
+
+	got := buffer.String()
+	for _, want := range []string{
+		"Embedded metadata:",
+		"title: Night Watch",
+		"artist: Sergey Lukyanenko",
+	} {
+		if !strings.Contains(got, want) {
+			t.Fatalf("output does not contain %q:\n%s", want, got)
+		}
+	}
+}
+
+func TestPrintChapters(t *testing.T) {
+	var buffer bytes.Buffer
+
+	printChapters(&buffer, []audio.Chapter{
+		{Title: "Intro", Start: 0, End: time.Minute},
+	})
+
+	got := buffer.String()
+	for _, want := range []string{
+		"Chapters: 1",
+		"Intro (00:00.000 - 01:00.000)",
+	} {
+		if !strings.Contains(got, want) {
+			t.Fatalf("output does not contain %q:\n%s", want, got)
 		}
 	}
 }

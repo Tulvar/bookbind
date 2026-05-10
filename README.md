@@ -16,6 +16,9 @@ go run ./cmd/bookbind inspect ./book.mp3
 go run ./cmd/bookbind inspect ./book-directory
 ```
 
+`inspect` shows audio properties, embedded metadata, and existing chapters when
+they are present.
+
 Create a metadata template next to the input:
 
 ```bash
