@@ -38,3 +38,20 @@ func TestReorderFlagArgsKeepsEqualsFlagTogether(t *testing.T) {
 		}
 	}
 }
+
+func TestReorderFlagArgsAllowsTemplateOutputAfterPositional(t *testing.T) {
+	got := reorderFlagArgs(
+		[]string{"book.mp3", "--output", "custom.yaml"},
+		map[string]bool{"output": true},
+	)
+	want := []string{"--output", "custom.yaml", "book.mp3"}
+
+	if len(got) != len(want) {
+		t.Fatalf("len = %d, want %d: %#v", len(got), len(want), got)
+	}
+	for i := range got {
+		if got[i] != want[i] {
+			t.Fatalf("got[%d] = %q, want %q: %#v", i, got[i], want[i], got)
+		}
+	}
+}

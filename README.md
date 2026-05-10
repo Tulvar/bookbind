@@ -16,6 +16,13 @@ go run ./cmd/bookbind inspect ./book.mp3
 go run ./cmd/bookbind inspect ./book-directory
 ```
 
+Create a metadata template next to the input:
+
+```bash
+go run ./cmd/bookbind template ./book.mp3
+go run ./cmd/bookbind template ./book-directory --output ./bookbind.yaml
+```
+
 Convert a single MP3 file or a directory with MP3 files:
 
 ```bash

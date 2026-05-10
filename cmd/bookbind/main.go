@@ -33,6 +33,8 @@ func run(ctx context.Context, args []string, stdout, stderr io.Writer) error {
 		return runInspect(ctx, application, args[1:], stdout)
 	case "convert":
 		return runConvert(ctx, application, args[1:], stdout)
+	case "template":
+		return runTemplate(ctx, application, args[1:], stdout)
 	case "version":
 		fmt.Fprintf(stdout, "bookbind %s\n", version.Version)
 		return nil
@@ -42,6 +44,44 @@ func run(ctx context.Context, args []string, stdout, stderr io.Writer) error {
 	default:
 		return fmt.Errorf("unknown command %q", args[0])
 	}
+}
+
+func runTemplate(ctx context.Context, application *app.App, args []string, stdout io.Writer) error {
+	fs := flag.NewFlagSet("template", flag.ContinueOnError)
+	fs.SetOutput(io.Discard)
+
+	output := fs.String("output", "", "metadata yaml output path")
+	overwrite := fs.Bool("overwrite", false, "overwrite output if it exists")
+
+	if err := fs.Parse(reorderFlagArgs(args, map[string]bool{
+		"output":    true,
+		"overwrite": false,
+	})); err != nil {
+		return err
+	}
+	if fs.NArg() != 1 {
+		return fmt.Errorf("template expects exactly one input path")
+	}
+
+	result, err := application.TemplateMetadata(ctx, app.TemplateRequest{
+		InputPath:  fs.Arg(0),
+		OutputPath: *output,
+		Overwrite:  *overwrite,
+	})
+	if err != nil {
+		return err
+	}
+
+	fmt.Fprintf(stdout, "Input: %s\n", result.InputPath)
+	fmt.Fprintf(stdout, "Metadata: %s\n", result.OutputPath)
+	if result.Book.Title != "" {
+		fmt.Fprintf(stdout, "Title: %s\n", result.Book.Title)
+	}
+	if result.Book.Cover != "" {
+		fmt.Fprintf(stdout, "Cover: %s\n", result.Book.Cover)
+	}
+	fmt.Fprintln(stdout, "Status: written")
+	return nil
 }
 
 func runInspect(ctx context.Context, application *app.App, args []string, stdout io.Writer) error {
@@ -148,6 +188,7 @@ func printUsage(w io.Writer) {
 	fmt.Fprintln(w, "Usage:")
 	fmt.Fprintln(w, "  bookbind inspect <mp3-or-directory>")
 	fmt.Fprintln(w, "  bookbind convert <mp3-or-directory> [--output book.m4b] [--dry-run]")
+	fmt.Fprintln(w, "  bookbind template <mp3-or-directory> [--output bookbind.yaml]")
 	fmt.Fprintln(w, "  bookbind version")
 }
 
