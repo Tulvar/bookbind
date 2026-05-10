@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os/exec"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -66,6 +67,7 @@ func (p *FFProbe) Probe(ctx context.Context, path string) (ProbeResult, error) {
 		Codec:    audioStream.CodecName,
 		Bitrate:  bitrate,
 		Channels: audioStream.Channels,
+		Tags:     embeddedTags(data.Format.Tags),
 	}, nil
 }
 
@@ -85,7 +87,10 @@ type ffprobeStream struct {
 type ffprobeFormat struct {
 	Duration string `json:"duration"`
 	BitRate  string `json:"bit_rate"`
+	Tags     ffTags `json:"tags"`
 }
+
+type ffTags map[string]string
 
 func (o ffprobeOutput) firstAudioStream() ffprobeStream {
 	for _, stream := range o.Streams {
@@ -118,4 +123,29 @@ func parseInt(value string) int {
 		return 0
 	}
 	return parsed
+}
+
+func embeddedTags(tags ffTags) EmbeddedTags {
+	return EmbeddedTags{
+		Title:       tagValue(tags, "title"),
+		Artist:      tagValue(tags, "artist"),
+		Album:       tagValue(tags, "album"),
+		AlbumArtist: tagValue(tags, "album_artist", "albumartist", "album artist"),
+		Composer:    tagValue(tags, "composer"),
+		Genre:       tagValue(tags, "genre"),
+		Date:        tagValue(tags, "date", "year"),
+		Comment:     tagValue(tags, "comment", "description"),
+		Language:    tagValue(tags, "language"),
+	}
+}
+
+func tagValue(tags ffTags, names ...string) string {
+	for _, name := range names {
+		for key, value := range tags {
+			if strings.EqualFold(key, name) {
+				return strings.TrimSpace(value)
+			}
+		}
+	}
+	return ""
 }

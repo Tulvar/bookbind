@@ -15,6 +15,7 @@ type File struct {
 	Codec    string
 	Bitrate  int
 	Channels int
+	Tags     EmbeddedTags
 }
 
 type ProbeResult struct {
@@ -22,4 +23,17 @@ type ProbeResult struct {
 	Codec    string
 	Bitrate  int
 	Channels int
+	Tags     EmbeddedTags
+}
+
+type EmbeddedTags struct {
+	Title       string
+	Artist      string
+	Album       string
+	AlbumArtist string
+	Composer    string
+	Genre       string
+	Date        string
+	Comment     string
+	Language    string
 }

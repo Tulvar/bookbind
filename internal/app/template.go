@@ -40,10 +40,15 @@ func (a *App) TemplateMetadata(ctx context.Context, req TemplateRequest) (Templa
 	}
 
 	book := filename.ParsePath(input.Path)
+	if len(input.Files) == 1 {
+		book = mergeEmbeddedTags(book, input.Files[0].Tags)
+	}
 	if book.Title == "" {
 		book.Title = defaultTitle(input.Path)
 	}
-	book.Language = "ru"
+	if book.Language == "" {
+		book.Language = "ru"
+	}
 	book.Cover = defaultCover(metadataTemplateDir(outputPath))
 
 	data, err := metadata.MarshalTemplateYAML(book)
