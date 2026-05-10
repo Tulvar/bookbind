@@ -42,6 +42,12 @@ Preview conversion without writing output:
 go run ./cmd/bookbind convert ./book.mp3 --output ./book.m4b --dry-run
 ```
 
+Create synthetic chapters for a single MP3:
+
+```bash
+go run ./cmd/bookbind convert ./book.mp3 --chapter-every 10m --output ./book.m4b
+```
+
 Use manual metadata:
 
 ```bash

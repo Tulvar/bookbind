@@ -128,15 +128,17 @@ func runConvert(ctx context.Context, application *app.App, args []string, stdout
 	output := fs.String("output", "", "output m4b path")
 	metadata := fs.String("metadata", "", "metadata yaml path")
 	cover := fs.String("cover", "", "cover image path")
+	chapterEvery := fs.String("chapter-every", "", "create synthetic chapters at the given interval, for example 10m")
 	dryRun := fs.Bool("dry-run", false, "print planned work without creating output")
 	overwrite := fs.Bool("overwrite", false, "overwrite output if it exists")
 
 	if err := fs.Parse(reorderFlagArgs(args, map[string]bool{
-		"output":    true,
-		"metadata":  true,
-		"cover":     true,
-		"dry-run":   false,
-		"overwrite": false,
+		"output":        true,
+		"metadata":      true,
+		"cover":         true,
+		"chapter-every": true,
+		"dry-run":       false,
+		"overwrite":     false,
 	})); err != nil {
 		return err
 	}
@@ -149,6 +151,7 @@ func runConvert(ctx context.Context, application *app.App, args []string, stdout
 		OutputPath:   *output,
 		MetadataPath: *metadata,
 		CoverPath:    *cover,
+		ChapterEvery: *chapterEvery,
 		DryRun:       *dryRun,
 		Overwrite:    *overwrite,
 	})
@@ -166,6 +169,9 @@ func runConvert(ctx context.Context, application *app.App, args []string, stdout
 	}
 	if result.CoverPath != "" {
 		fmt.Fprintf(stdout, "Cover: %s\n", result.CoverPath)
+	}
+	if result.ChapterEvery != "" {
+		fmt.Fprintf(stdout, "Chapter every: %s\n", result.ChapterEvery)
 	}
 	fmt.Fprintf(stdout, "Output: %s\n", result.OutputPath)
 	if result.DryRun {
@@ -187,7 +193,7 @@ func printUsage(w io.Writer) {
 	fmt.Fprintln(w)
 	fmt.Fprintln(w, "Usage:")
 	fmt.Fprintln(w, "  bookbind inspect <mp3-or-directory>")
-	fmt.Fprintln(w, "  bookbind convert <mp3-or-directory> [--output book.m4b] [--dry-run]")
+	fmt.Fprintln(w, "  bookbind convert <mp3-or-directory> [--output book.m4b] [--dry-run] [--chapter-every 10m]")
 	fmt.Fprintln(w, "  bookbind template <mp3-or-directory> [--output bookbind.yaml]")
 	fmt.Fprintln(w, "  bookbind version")
 }

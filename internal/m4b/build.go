@@ -7,6 +7,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/Tulvar/bookbind/internal/audio"
 	"github.com/Tulvar/bookbind/internal/chapters"
@@ -42,12 +43,13 @@ func NewBuilder(ffmpegPath string) *Builder {
 }
 
 type BuildRequest struct {
-	Input      audio.Input
-	Metadata   metadata.Book
-	CoverPath  string
-	OutputPath string
-	Overwrite  bool
-	DryRun     bool
+	Input        audio.Input
+	Metadata     metadata.Book
+	CoverPath    string
+	OutputPath   string
+	Overwrite    bool
+	DryRun       bool
+	ChapterEvery time.Duration
 }
 
 type BuildResult struct {
@@ -94,7 +96,11 @@ func (b *Builder) command(req BuildRequest) ([]string, func(), error) {
 	}
 
 	if len(req.Input.Files) == 1 {
-		metadataPath, cleanupMetadata, err := writeFFMetadata(req.Metadata, nil)
+		bookChapters, err := singleFileChapters(req.Input.Files[0], req.ChapterEvery)
+		if err != nil {
+			return nil, nil, err
+		}
+		metadataPath, cleanupMetadata, err := writeFFMetadata(req.Metadata, bookChapters)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -119,6 +125,9 @@ func (b *Builder) command(req BuildRequest) ([]string, func(), error) {
 			"-c:a", "aac",
 			"-b:a", "64k",
 		)
+		if len(bookChapters) > 0 {
+			args = append(args, "-map_chapters", "1")
+		}
 		args = appendCoverArgs(args, req.CoverPath)
 		args = append(args, req.OutputPath)
 		return append([]string{b.FFmpegPath}, args...), cleanup, nil
@@ -168,6 +177,13 @@ func (b *Builder) command(req BuildRequest) ([]string, func(), error) {
 	args = appendCoverArgs(args, req.CoverPath)
 	args = append(args, req.OutputPath)
 	return append([]string{b.FFmpegPath}, args...), cleanup, nil
+}
+
+func singleFileChapters(file audio.File, chapterEvery time.Duration) ([]chapters.Chapter, error) {
+	if chapterEvery == 0 {
+		return nil, nil
+	}
+	return chapters.Synthetic(file.Duration, chapterEvery)
 }
 
 func appendCoverArgs(args []string, coverPath string) []string {

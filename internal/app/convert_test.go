@@ -177,6 +177,44 @@ func TestConvertRejectsUnsupportedCoverExtension(t *testing.T) {
 	}
 }
 
+func TestConvertAcceptsChapterEvery(t *testing.T) {
+	dir := t.TempDir()
+	inputPath := filepath.Join(dir, "book.mp3")
+	if err := os.WriteFile(inputPath, []byte("test"), 0o644); err != nil {
+		t.Fatalf("write input file: %v", err)
+	}
+
+	result, err := newTestApp().Convert(context.Background(), ConvertRequest{
+		InputPath:    inputPath,
+		ChapterEvery: "10m",
+		DryRun:       true,
+	})
+	if err != nil {
+		t.Fatalf("Convert() error = %v", err)
+	}
+
+	if got, want := result.ChapterEvery, "10m"; got != want {
+		t.Fatalf("ChapterEvery = %q, want %q", got, want)
+	}
+}
+
+func TestConvertRejectsInvalidChapterEvery(t *testing.T) {
+	dir := t.TempDir()
+	inputPath := filepath.Join(dir, "book.mp3")
+	if err := os.WriteFile(inputPath, []byte("test"), 0o644); err != nil {
+		t.Fatalf("write input file: %v", err)
+	}
+
+	_, err := newTestApp().Convert(context.Background(), ConvertRequest{
+		InputPath:    inputPath,
+		ChapterEvery: "soon",
+		DryRun:       true,
+	})
+	if err == nil {
+		t.Fatal("Convert() error = nil, want error")
+	}
+}
+
 func newTestApp() *App {
 	return newTestAppWithProber(testProber{})
 }

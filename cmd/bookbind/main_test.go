@@ -55,3 +55,20 @@ func TestReorderFlagArgsAllowsTemplateOutputAfterPositional(t *testing.T) {
 		}
 	}
 }
+
+func TestReorderFlagArgsAllowsChapterEveryAfterPositional(t *testing.T) {
+	got := reorderFlagArgs(
+		[]string{"book.mp3", "--chapter-every", "10m"},
+		map[string]bool{"chapter-every": true},
+	)
+	want := []string{"--chapter-every", "10m", "book.mp3"}
+
+	if len(got) != len(want) {
+		t.Fatalf("len = %d, want %d: %#v", len(got), len(want), got)
+	}
+	for i := range got {
+		if got[i] != want[i] {
+			t.Fatalf("got[%d] = %q, want %q: %#v", i, got[i], want[i], got)
+		}
+	}
+}
