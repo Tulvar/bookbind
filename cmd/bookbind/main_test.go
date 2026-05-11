@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/Tulvar/bookbind/internal/audio"
+	"github.com/Tulvar/bookbind/internal/metadata"
 	"github.com/Tulvar/bookbind/internal/providers"
 )
 
@@ -132,10 +133,10 @@ func TestRunProviders(t *testing.T) {
 
 func TestReorderFlagArgsAllowsMetadataFlags(t *testing.T) {
 	got := reorderFlagArgs(
-		[]string{"--provider", "googlebooks", "--id", "abc", "--output", "bookbind.yaml", "--overwrite"},
-		map[string]bool{"provider": true, "id": true, "output": true, "overwrite": false},
+		[]string{"--provider", "googlebooks", "--id", "abc", "--preview", "--output", "bookbind.yaml", "--overwrite"},
+		map[string]bool{"provider": true, "id": true, "output": true, "preview": false, "overwrite": false},
 	)
-	want := []string{"--provider", "googlebooks", "--id", "abc", "--output", "bookbind.yaml", "--overwrite"}
+	want := []string{"--provider", "googlebooks", "--id", "abc", "--preview", "--output", "bookbind.yaml", "--overwrite"}
 
 	if len(got) != len(want) {
 		t.Fatalf("len = %d, want %d: %#v", len(got), len(want), got)
@@ -143,6 +144,41 @@ func TestReorderFlagArgsAllowsMetadataFlags(t *testing.T) {
 	for i := range got {
 		if got[i] != want[i] {
 			t.Fatalf("got[%d] = %q, want %q: %#v", i, got[i], want[i], got)
+		}
+	}
+}
+
+func TestPrintMetadataDetails(t *testing.T) {
+	var buffer bytes.Buffer
+
+	printMetadataDetails(&buffer, providers.Candidate{
+		Provider:   "googlebooks",
+		ID:         "abc",
+		Confidence: 0.95,
+	}, metadata.Book{
+		Title:         "Night Watch",
+		Author:        "Sergey Lukyanenko",
+		Narrator:      "Reader",
+		Series:        "Watches",
+		SeriesIndex:   "1",
+		PublishedYear: 1998,
+		Cover:         "https://example.test/cover.jpg",
+	})
+
+	got := buffer.String()
+	for _, want := range []string{
+		"Provider: googlebooks",
+		"ID: abc",
+		"Title: Night Watch",
+		"Author: Sergey Lukyanenko",
+		"Narrator: Reader",
+		"Series: Watches #1",
+		"Published year: 1998",
+		"Cover: https://example.test/cover.jpg",
+		"Confidence: 0.95",
+	} {
+		if !strings.Contains(got, want) {
+			t.Fatalf("output does not contain %q:\n%s", want, got)
 		}
 	}
 }

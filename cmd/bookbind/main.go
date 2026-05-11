@@ -12,6 +12,7 @@ import (
 
 	"github.com/Tulvar/bookbind/internal/app"
 	"github.com/Tulvar/bookbind/internal/audio"
+	"github.com/Tulvar/bookbind/internal/metadata"
 	"github.com/Tulvar/bookbind/internal/providers"
 	"github.com/Tulvar/bookbind/pkg/version"
 )
@@ -117,18 +118,32 @@ func runMetadata(ctx context.Context, application *app.App, args []string, stdou
 	provider := fs.String("provider", "", "metadata provider")
 	id := fs.String("id", "", "provider candidate id")
 	output := fs.String("output", "bookbind.yaml", "metadata yaml output path")
+	preview := fs.Bool("preview", false, "print candidate details without writing metadata")
 	overwrite := fs.Bool("overwrite", false, "overwrite output if it exists")
 
 	if err := fs.Parse(reorderFlagArgs(args, map[string]bool{
 		"provider":  true,
 		"id":        true,
 		"output":    true,
+		"preview":   false,
 		"overwrite": false,
 	})); err != nil {
 		return err
 	}
 	if fs.NArg() != 0 {
 		return fmt.Errorf("metadata does not accept positional arguments")
+	}
+
+	if *preview {
+		result, err := application.PreviewMetadata(ctx, app.PreviewMetadataRequest{
+			Provider: *provider,
+			ID:       *id,
+		})
+		if err != nil {
+			return err
+		}
+		printMetadataDetails(stdout, result.Candidate, result.Book)
+		return nil
 	}
 
 	result, err := application.ResolveMetadata(ctx, app.ResolveMetadataRequest{
@@ -141,17 +156,40 @@ func runMetadata(ctx context.Context, application *app.App, args []string, stdou
 		return err
 	}
 
-	fmt.Fprintf(stdout, "Provider: %s\n", result.Candidate.Provider)
-	fmt.Fprintf(stdout, "ID: %s\n", result.Candidate.ID)
+	printMetadataDetails(stdout, result.Candidate, result.Book)
 	fmt.Fprintf(stdout, "Metadata: %s\n", result.OutputPath)
-	if result.Book.Title != "" {
-		fmt.Fprintf(stdout, "Title: %s\n", result.Book.Title)
-	}
-	if len(result.Book.NormalizedAuthors()) > 0 {
-		fmt.Fprintf(stdout, "Author: %s\n", strings.Join(result.Book.NormalizedAuthors(), ", "))
-	}
 	fmt.Fprintln(stdout, "Status: written")
 	return nil
+}
+
+func printMetadataDetails(stdout io.Writer, candidate providers.Candidate, book metadata.Book) {
+	fmt.Fprintf(stdout, "Provider: %s\n", candidate.Provider)
+	fmt.Fprintf(stdout, "ID: %s\n", candidate.ID)
+	if book.Title != "" {
+		fmt.Fprintf(stdout, "Title: %s\n", book.Title)
+	}
+	if len(book.NormalizedAuthors()) > 0 {
+		fmt.Fprintf(stdout, "Author: %s\n", strings.Join(book.NormalizedAuthors(), ", "))
+	}
+	if len(book.NormalizedNarrators()) > 0 {
+		fmt.Fprintf(stdout, "Narrator: %s\n", strings.Join(book.NormalizedNarrators(), ", "))
+	}
+	if book.Series != "" {
+		fmt.Fprintf(stdout, "Series: %s", book.Series)
+		if book.SeriesIndex != "" {
+			fmt.Fprintf(stdout, " #%s", book.SeriesIndex)
+		}
+		fmt.Fprintln(stdout)
+	}
+	if book.PublishedYear > 0 {
+		fmt.Fprintf(stdout, "Published year: %d\n", book.PublishedYear)
+	}
+	if book.Cover != "" {
+		fmt.Fprintf(stdout, "Cover: %s\n", book.Cover)
+	}
+	if candidate.Confidence > 0 {
+		fmt.Fprintf(stdout, "Confidence: %.2f\n", candidate.Confidence)
+	}
 }
 
 func runProviders(stdout io.Writer) error {
@@ -360,7 +398,7 @@ func printUsage(w io.Writer) {
 	fmt.Fprintln(w, "  bookbind inspect <mp3-or-directory>")
 	fmt.Fprintln(w, "  bookbind providers")
 	fmt.Fprintln(w, "  bookbind search --title <title> [--author <author>] [--provider openlibrary,googlebooks]")
-	fmt.Fprintln(w, "  bookbind metadata --provider <provider> --id <candidate-id> [--output bookbind.yaml]")
+	fmt.Fprintln(w, "  bookbind metadata --provider <provider> --id <candidate-id> [--preview] [--output bookbind.yaml]")
 	fmt.Fprintln(w, "  bookbind convert <mp3-or-directory> [--output book.m4b] [--dry-run] [--chapter-every 10m]")
 	fmt.Fprintln(w, "  bookbind template <mp3-or-directory> [--output bookbind.yaml]")
 	fmt.Fprintln(w, "  bookbind version")

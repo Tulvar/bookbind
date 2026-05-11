@@ -52,6 +52,7 @@ limit a search to selected sources.
 Save a selected metadata candidate:
 
 ```bash
+go run ./cmd/bookbind metadata --provider googlebooks --id <candidate-id> --preview
 go run ./cmd/bookbind metadata --provider googlebooks --id <candidate-id> --output bookbind.yaml
 ```
 

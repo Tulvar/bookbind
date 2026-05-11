@@ -90,6 +90,36 @@ func TestResolveMetadataRejectsUnknownProvider(t *testing.T) {
 	}
 }
 
+func TestPreviewMetadataReturnsBookWithoutWritingYAML(t *testing.T) {
+	app := New(WithProviders(providers.NewRegistry(local.New([]providers.Candidate{
+		{
+			ID:        "book-1",
+			Title:     "Ночной дозор",
+			Authors:   []string{"Сергей Лукьяненко"},
+			Narrators: []string{"Reader"},
+			Year:      1998,
+		},
+	}))))
+
+	result, err := app.PreviewMetadata(context.Background(), PreviewMetadataRequest{
+		Provider: "local",
+		ID:       "book-1",
+	})
+	if err != nil {
+		t.Fatalf("PreviewMetadata() error = %v", err)
+	}
+
+	if result.Candidate.ID != "book-1" {
+		t.Fatalf("Candidate ID = %q", result.Candidate.ID)
+	}
+	if result.Book.Title != "Ночной дозор" {
+		t.Fatalf("Title = %q", result.Book.Title)
+	}
+	if result.Book.Narrator != "Reader" {
+		t.Fatalf("Narrator = %q", result.Book.Narrator)
+	}
+}
+
 func TestBookFromCandidateJoinsMultipleAuthors(t *testing.T) {
 	book := bookFromCandidate(providers.Candidate{
 		Title:   "Book",
