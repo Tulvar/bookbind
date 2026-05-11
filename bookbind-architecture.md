@@ -1346,6 +1346,27 @@ feature/chapter-matching-ui
 ci/build-and-test
 ```
 
+Для релизов начиная с `v0.3.0` используется интеграционная релизная ветка:
+
+```text
+main
+  ↑
+release/v0.3.0
+  ↑
+feature/search-providers
+feature/interactive-selection
+feature/cache
+```
+
+Правила:
+
+```text
+- feature-ветки создаются от release/v0.3.0
+- feature-ветки мержатся в release/v0.3.0
+- main получает только готовый release/vX.Y.Z
+- версия в pkg/version обновляется в финальном release PR
+```
+
 ---
 
 ## 20. CI
