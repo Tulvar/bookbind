@@ -1015,19 +1015,23 @@ bookbind convert ./book.mp3 --metadata bookbind.yaml
 Сделать:
 
 ```text
-- общий Provider interface
-- Google Books provider
-- Open Library provider
-- FantLab provider
-- Candidate model
-- scoring
-- команда search
+- [x] общий Provider interface
+- [x] Google Books provider
+- [x] Open Library provider
+- [ ] FantLab provider
+- [x] Candidate model
+- [x] scoring
+- [x] команда search
+- [x] команда providers
+- [x] выбор источников через --provider
 ```
 
 Результат:
 
 ```bash
 bookbind search --title "Ночной дозор" --author "Лукьяненко"
+bookbind search --title "Ночной дозор" --provider openlibrary
+bookbind providers
 ```
 
 ---
