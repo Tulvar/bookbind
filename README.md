@@ -34,10 +34,12 @@ Search metadata candidates:
 ```bash
 go run ./cmd/bookbind search --title "Ночной дозор" --author "Лукьяненко"
 go run ./cmd/bookbind search --title "Ночной дозор" --provider openlibrary
+go run ./cmd/bookbind search --title "Ночной дозор" --select 1 --output bookbind.yaml
 ```
 
 Search prints a table with provider, candidate id, title, authors, year, and
-confidence. Use the provider and id columns with the `metadata` command.
+confidence. Use `--select` to write metadata from the chosen row, or use the
+provider and id columns with the `metadata` command.
 
 List available metadata providers:
 
