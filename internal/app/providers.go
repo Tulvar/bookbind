@@ -23,17 +23,26 @@ func AvailableProviders() []ProviderInfo {
 }
 
 func NewProviderRegistry(names []string) (*providers.Registry, error) {
+	cachePath, err := CacheDir()
+	if err != nil {
+		return nil, err
+	}
+	return NewProviderRegistryWithCache(names, cachePath)
+}
+
+func NewProviderRegistryWithCache(names []string, cachePath string) (*providers.Registry, error) {
 	if len(names) == 0 {
 		names = defaultProviderNames()
 	}
 
+	cache := providers.NewCache(cachePath)
 	selected := make([]providers.Provider, 0, len(names))
 	for _, name := range names {
 		provider, err := providerByName(name)
 		if err != nil {
 			return nil, err
 		}
-		selected = append(selected, provider)
+		selected = append(selected, cache.Wrap(provider))
 	}
 	return providers.NewRegistry(selected...), nil
 }

@@ -88,6 +88,8 @@ go run ./cmd/bookbind cache list
 go run ./cmd/bookbind cache clean
 ```
 
+Metadata provider responses are cached under the local bookbind cache directory.
+
 Use manual metadata:
 
 ```bash
