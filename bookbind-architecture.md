@@ -1073,7 +1073,7 @@ bookbind convert ./book.mp3 --interactive --select 1
 ```text
 - [ ] SQLite cache
 - [x] file cache for provider responses
-- cache for selected matches
+- [ ] cache for selected matches
 - [x] cache clean command
 - [x] cache list command
 ```
