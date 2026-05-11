@@ -2,24 +2,33 @@ package main
 
 import (
 	"bytes"
+	"context"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
 
+	"github.com/Tulvar/bookbind/internal/app"
 	"github.com/Tulvar/bookbind/internal/audio"
+	"github.com/Tulvar/bookbind/internal/m4b"
 	"github.com/Tulvar/bookbind/internal/metadata"
 	"github.com/Tulvar/bookbind/internal/providers"
+	"github.com/Tulvar/bookbind/internal/providers/local"
 )
 
 func TestReorderFlagArgsAllowsFlagsAfterPositional(t *testing.T) {
 	got := reorderFlagArgs(
-		[]string{"book.mp3", "--output", "book.m4b", "--dry-run"},
+		[]string{"book.mp3", "--output", "book.m4b", "--dry-run", "--interactive", "--select", "1", "--provider", "local"},
 		map[string]bool{
-			"output":  true,
-			"dry-run": false,
+			"output":      true,
+			"dry-run":     false,
+			"interactive": false,
+			"select":      true,
+			"provider":    true,
 		},
 	)
-	want := []string{"--output", "book.m4b", "--dry-run", "book.mp3"}
+	want := []string{"--output", "book.m4b", "--dry-run", "--interactive", "--select", "1", "--provider", "local", "book.mp3"}
 
 	if len(got) != len(want) {
 		t.Fatalf("len = %d, want %d: %#v", len(got), len(want), got)
@@ -117,6 +126,72 @@ func TestSelectCandidateRejectsOutOfRange(t *testing.T) {
 	_, err := selectCandidate([]providers.Candidate{{ID: "first"}}, 2)
 	if err == nil {
 		t.Fatal("selectCandidate() error = nil, want error")
+	}
+}
+
+func TestDefaultInteractiveMetadataPath(t *testing.T) {
+	dir := t.TempDir()
+	filePath := filepath.Join(dir, "book.mp3")
+	if err := os.WriteFile(filePath, []byte("test"), 0o644); err != nil {
+		t.Fatalf("WriteFile() error = %v", err)
+	}
+
+	if got, want := defaultInteractiveMetadataPath(filePath), filepath.Join(dir, "bookbind.yaml"); got != want {
+		t.Fatalf("file metadata path = %q, want %q", got, want)
+	}
+	if got, want := defaultInteractiveMetadataPath(dir), filepath.Join(dir, "bookbind.yaml"); got != want {
+		t.Fatalf("dir metadata path = %q, want %q", got, want)
+	}
+}
+
+func TestResolveInteractiveMetadataWritesSelectedCandidate(t *testing.T) {
+	dir := t.TempDir()
+	inputPath := filepath.Join(dir, "Night Watch.mp3")
+	if err := os.WriteFile(inputPath, []byte("test"), 0o644); err != nil {
+		t.Fatalf("WriteFile() error = %v", err)
+	}
+
+	var output bytes.Buffer
+	metadataPath, err := resolveInteractiveMetadata(context.Background(), newCLIInteractiveTestApp(), interactiveMetadataRequest{
+		InputPath:     inputPath,
+		SelectIndex:   1,
+		SearchStdout:  &output,
+		DetailsStdout: &output,
+	})
+	if err != nil {
+		t.Fatalf("resolveInteractiveMetadata() error = %v", err)
+	}
+
+	if got, want := metadataPath, filepath.Join(dir, "bookbind.yaml"); got != want {
+		t.Fatalf("metadataPath = %q, want %q", got, want)
+	}
+	book, err := metadata.LoadYAML(metadataPath)
+	if err != nil {
+		t.Fatalf("LoadYAML() error = %v", err)
+	}
+	if book.Title != "Night Watch" {
+		t.Fatalf("Title = %q", book.Title)
+	}
+	gotOutput := output.String()
+	for _, want := range []string{
+		"Candidates: 1",
+		"Selected: 1",
+		"Status: written",
+	} {
+		if !strings.Contains(gotOutput, want) {
+			t.Fatalf("output does not contain %q:\n%s", want, gotOutput)
+		}
+	}
+}
+
+func TestResolveInteractiveMetadataRequiresSelect(t *testing.T) {
+	_, err := resolveInteractiveMetadata(context.Background(), newCLIInteractiveTestApp(), interactiveMetadataRequest{
+		InputPath:     "Night Watch.mp3",
+		SearchStdout:  &bytes.Buffer{},
+		DetailsStdout: &bytes.Buffer{},
+	})
+	if err == nil {
+		t.Fatal("resolveInteractiveMetadata() error = nil, want error")
 	}
 }
 
@@ -287,4 +362,38 @@ func TestPrintChapters(t *testing.T) {
 			t.Fatalf("output does not contain %q:\n%s", want, got)
 		}
 	}
+}
+
+func newCLIInteractiveTestApp() *app.App {
+	builder := m4b.NewBuilder("ffmpeg")
+	builder.Runner = noopRunner{}
+	return app.New(
+		app.WithInspector(audio.NewInspector(audio.WithProber(cliTestProber{}))),
+		app.WithBuilder(builder),
+		app.WithProviders(providers.NewRegistry(local.New([]providers.Candidate{
+			{
+				ID:      "book-1",
+				Title:   "Night Watch",
+				Authors: []string{"Sergey Lukyanenko"},
+				Year:    1998,
+			},
+		}))),
+	)
+}
+
+type cliTestProber struct{}
+
+func (cliTestProber) Probe(context.Context, string) (audio.ProbeResult, error) {
+	return audio.ProbeResult{
+		Duration: time.Second,
+		Codec:    "mp3",
+		Bitrate:  128000,
+		Channels: 2,
+	}, nil
+}
+
+type noopRunner struct{}
+
+func (noopRunner) Run(context.Context, string, ...string) error {
+	return nil
 }

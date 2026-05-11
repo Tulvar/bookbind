@@ -63,6 +63,7 @@ Convert a single MP3 file or a directory with MP3 files:
 ```bash
 go run ./cmd/bookbind convert ./book.mp3 --output ./book.m4b
 go run ./cmd/bookbind convert ./book-directory --output ./book.m4b
+go run ./cmd/bookbind convert ./book.mp3 --interactive --select 1 --output ./book.m4b
 ```
 
 When converting a directory, MP3 files are sorted by filename and written as M4B

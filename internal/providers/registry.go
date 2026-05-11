@@ -52,7 +52,14 @@ func (r *Registry) Get(ctx context.Context, providerName, id string) (Candidate,
 
 	for _, provider := range r.providers {
 		if strings.EqualFold(provider.Name(), providerName) {
-			return provider.Get(ctx, id)
+			candidate, err := provider.Get(ctx, id)
+			if err != nil {
+				return Candidate{}, err
+			}
+			if candidate.Provider == "" {
+				candidate.Provider = provider.Name()
+			}
+			return candidate, nil
 		}
 	}
 	return Candidate{}, fmt.Errorf("unknown provider %q", providerName)
