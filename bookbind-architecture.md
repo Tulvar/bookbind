@@ -1320,11 +1320,11 @@ BuildM4B(ctx, request)
 Первый PR со scaffold:
 
 ```text
-- Wails project files
-- frontend shell
-- backend bridge AppVersion
-- навигация Import / Metadata / Convert / Cache
-- локальная команда запуска desktop dev mode
+- [x] Wails project files
+- [x] frontend shell
+- [x] backend bridge AppVersion
+- [x] навигация Import / Metadata / Convert / Cache
+- [x] локальная команда запуска desktop dev mode
 ```
 
 Следующие PR:
