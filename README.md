@@ -2,10 +2,10 @@
 
 `bookbind` converts MP3 audiobook files into M4B.
 
-Current milestone: `v0.3.0`.
+Current milestone: `v0.4.0`.
 
-The current focus is a reliable Go core that can be reused by CLI, tests, and
-the future desktop UI.
+The current focus is a Wails desktop UI for Windows, macOS, and Linux on top of
+the existing Go core.
 
 ## Current CLI
 
@@ -144,6 +144,14 @@ The release workflow builds CLI artifacts named with the version, for example
 runs.
 
 ## Milestones
+
+### v0.4.0
+
+- Wails desktop shell for Windows, macOS, and Linux
+- React/TypeScript frontend
+- Go bridge over the existing app use cases
+- import, metadata, convert, and cache screens
+- desktop build and CI smoke checks
 
 ### v0.3.0
 
