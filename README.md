@@ -36,6 +36,9 @@ go run ./cmd/bookbind search --title "Ночной дозор" --author "Лук�
 go run ./cmd/bookbind search --title "Ночной дозор" --provider openlibrary
 ```
 
+Search prints a table with provider, candidate id, title, authors, year, and
+confidence. Use the provider and id columns with the `metadata` command.
+
 List available metadata providers:
 
 ```bash

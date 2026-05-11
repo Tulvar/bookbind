@@ -7,10 +7,12 @@ import (
 	"io"
 	"os"
 	"strings"
+	"text/tabwriter"
 	"time"
 
 	"github.com/Tulvar/bookbind/internal/app"
 	"github.com/Tulvar/bookbind/internal/audio"
+	"github.com/Tulvar/bookbind/internal/providers"
 	"github.com/Tulvar/bookbind/pkg/version"
 )
 
@@ -81,24 +83,31 @@ func runSearch(ctx context.Context, application *app.App, args []string, stdout 
 		return err
 	}
 
-	fmt.Fprintf(stdout, "Candidates: %d\n", len(result.Candidates))
-	for i, candidate := range result.Candidates {
-		fmt.Fprintf(stdout, "[%d] %s", i+1, candidate.Provider)
-		if candidate.ID != "" {
-			fmt.Fprintf(stdout, ":%s", candidate.ID)
-		}
-		if candidate.Title != "" {
-			fmt.Fprintf(stdout, "    %s", candidate.Title)
-		}
-		if len(candidate.Authors) > 0 {
-			fmt.Fprintf(stdout, " — %s", strings.Join(candidate.Authors, ", "))
-		}
-		if candidate.Confidence > 0 {
-			fmt.Fprintf(stdout, "    confidence %.2f", candidate.Confidence)
-		}
-		fmt.Fprintln(stdout)
+	return printSearchCandidates(stdout, result.Candidates)
+}
+
+func printSearchCandidates(stdout io.Writer, candidates []providers.Candidate) error {
+	fmt.Fprintf(stdout, "Candidates: %d\n", len(candidates))
+	if len(candidates) == 0 {
+		return nil
 	}
-	return nil
+
+	table := tabwriter.NewWriter(stdout, 0, 0, 2, ' ', 0)
+	fmt.Fprintln(table, "#\tProvider\tID\tTitle\tAuthors\tYear\tConfidence")
+	for i, candidate := range candidates {
+		fmt.Fprintf(
+			table,
+			"%d\t%s\t%s\t%s\t%s\t%s\t%s\n",
+			i+1,
+			candidate.Provider,
+			candidate.ID,
+			candidate.Title,
+			strings.Join(candidate.Authors, ", "),
+			formatYear(candidate.Year),
+			formatConfidence(candidate.Confidence),
+		)
+	}
+	return table.Flush()
 }
 
 func runMetadata(ctx context.Context, application *app.App, args []string, stdout io.Writer) error {
@@ -378,6 +387,20 @@ func formatTimecode(duration time.Duration) string {
 		return fmt.Sprintf("%d:%02d:%02d.%03d", hours, minutes, seconds, millis)
 	}
 	return fmt.Sprintf("%02d:%02d.%03d", minutes, seconds, millis)
+}
+
+func formatYear(year int) string {
+	if year <= 0 {
+		return ""
+	}
+	return fmt.Sprintf("%d", year)
+}
+
+func formatConfidence(confidence float64) string {
+	if confidence <= 0 {
+		return ""
+	}
+	return fmt.Sprintf("%.2f", confidence)
 }
 
 func reorderFlagArgs(args []string, valueFlags map[string]bool) []string {
