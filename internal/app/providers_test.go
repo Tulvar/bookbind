@@ -13,9 +13,9 @@ func TestNewProviderRegistryDefaults(t *testing.T) {
 }
 
 func TestNewProviderRegistrySelectsProviders(t *testing.T) {
-	registry, err := NewProviderRegistry([]string{"openlibrary", "google"})
+	registry, err := NewProviderRegistryWithCache([]string{"openlibrary", "google"}, t.TempDir())
 	if err != nil {
-		t.Fatalf("NewProviderRegistry() error = %v", err)
+		t.Fatalf("NewProviderRegistryWithCache() error = %v", err)
 	}
 	if registry == nil {
 		t.Fatal("registry is nil")
@@ -23,9 +23,9 @@ func TestNewProviderRegistrySelectsProviders(t *testing.T) {
 }
 
 func TestNewProviderRegistryRejectsUnknownProvider(t *testing.T) {
-	_, err := NewProviderRegistry([]string{"unknown"})
+	_, err := NewProviderRegistryWithCache([]string{"unknown"}, t.TempDir())
 	if err == nil {
-		t.Fatal("NewProviderRegistry() error = nil, want error")
+		t.Fatal("NewProviderRegistryWithCache() error = nil, want error")
 	}
 }
 
