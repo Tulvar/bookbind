@@ -129,6 +129,23 @@ func TestRunProviders(t *testing.T) {
 	}
 }
 
+func TestReorderFlagArgsAllowsMetadataFlags(t *testing.T) {
+	got := reorderFlagArgs(
+		[]string{"--provider", "googlebooks", "--id", "abc", "--output", "bookbind.yaml", "--overwrite"},
+		map[string]bool{"provider": true, "id": true, "output": true, "overwrite": false},
+	)
+	want := []string{"--provider", "googlebooks", "--id", "abc", "--output", "bookbind.yaml", "--overwrite"}
+
+	if len(got) != len(want) {
+		t.Fatalf("len = %d, want %d: %#v", len(got), len(want), got)
+	}
+	for i := range got {
+		if got[i] != want[i] {
+			t.Fatalf("got[%d] = %q, want %q: %#v", i, got[i], want[i], got)
+		}
+	}
+}
+
 func TestPrintEmbeddedTags(t *testing.T) {
 	var buffer bytes.Buffer
 

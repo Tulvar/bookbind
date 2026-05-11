@@ -38,6 +38,8 @@ func run(ctx context.Context, args []string, stdout, stderr io.Writer) error {
 		return runSearch(ctx, application, args[1:], stdout)
 	case "providers":
 		return runProviders(stdout)
+	case "metadata":
+		return runMetadata(ctx, application, args[1:], stdout)
 	case "template":
 		return runTemplate(ctx, application, args[1:], stdout)
 	case "version":
@@ -82,6 +84,9 @@ func runSearch(ctx context.Context, application *app.App, args []string, stdout 
 	fmt.Fprintf(stdout, "Candidates: %d\n", len(result.Candidates))
 	for i, candidate := range result.Candidates {
 		fmt.Fprintf(stdout, "[%d] %s", i+1, candidate.Provider)
+		if candidate.ID != "" {
+			fmt.Fprintf(stdout, ":%s", candidate.ID)
+		}
 		if candidate.Title != "" {
 			fmt.Fprintf(stdout, "    %s", candidate.Title)
 		}
@@ -93,6 +98,50 @@ func runSearch(ctx context.Context, application *app.App, args []string, stdout 
 		}
 		fmt.Fprintln(stdout)
 	}
+	return nil
+}
+
+func runMetadata(ctx context.Context, application *app.App, args []string, stdout io.Writer) error {
+	fs := flag.NewFlagSet("metadata", flag.ContinueOnError)
+	fs.SetOutput(io.Discard)
+
+	provider := fs.String("provider", "", "metadata provider")
+	id := fs.String("id", "", "provider candidate id")
+	output := fs.String("output", "bookbind.yaml", "metadata yaml output path")
+	overwrite := fs.Bool("overwrite", false, "overwrite output if it exists")
+
+	if err := fs.Parse(reorderFlagArgs(args, map[string]bool{
+		"provider":  true,
+		"id":        true,
+		"output":    true,
+		"overwrite": false,
+	})); err != nil {
+		return err
+	}
+	if fs.NArg() != 0 {
+		return fmt.Errorf("metadata does not accept positional arguments")
+	}
+
+	result, err := application.ResolveMetadata(ctx, app.ResolveMetadataRequest{
+		Provider:   *provider,
+		ID:         *id,
+		OutputPath: *output,
+		Overwrite:  *overwrite,
+	})
+	if err != nil {
+		return err
+	}
+
+	fmt.Fprintf(stdout, "Provider: %s\n", result.Candidate.Provider)
+	fmt.Fprintf(stdout, "ID: %s\n", result.Candidate.ID)
+	fmt.Fprintf(stdout, "Metadata: %s\n", result.OutputPath)
+	if result.Book.Title != "" {
+		fmt.Fprintf(stdout, "Title: %s\n", result.Book.Title)
+	}
+	if len(result.Book.NormalizedAuthors()) > 0 {
+		fmt.Fprintf(stdout, "Author: %s\n", strings.Join(result.Book.NormalizedAuthors(), ", "))
+	}
+	fmt.Fprintln(stdout, "Status: written")
 	return nil
 }
 
@@ -302,6 +351,7 @@ func printUsage(w io.Writer) {
 	fmt.Fprintln(w, "  bookbind inspect <mp3-or-directory>")
 	fmt.Fprintln(w, "  bookbind providers")
 	fmt.Fprintln(w, "  bookbind search --title <title> [--author <author>] [--provider openlibrary,googlebooks]")
+	fmt.Fprintln(w, "  bookbind metadata --provider <provider> --id <candidate-id> [--output bookbind.yaml]")
 	fmt.Fprintln(w, "  bookbind convert <mp3-or-directory> [--output book.m4b] [--dry-run] [--chapter-every 10m]")
 	fmt.Fprintln(w, "  bookbind template <mp3-or-directory> [--output bookbind.yaml]")
 	fmt.Fprintln(w, "  bookbind version")

@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"sort"
+	"strings"
 )
 
 type Registry struct {
@@ -38,4 +39,21 @@ func (r *Registry) Search(ctx context.Context, query SearchQuery) ([]Candidate, 
 		return all[i].Confidence > all[j].Confidence
 	})
 	return all, nil
+}
+
+func (r *Registry) Get(ctx context.Context, providerName, id string) (Candidate, error) {
+	providerName = strings.TrimSpace(providerName)
+	if providerName == "" {
+		return Candidate{}, fmt.Errorf("provider is required")
+	}
+	if strings.TrimSpace(id) == "" {
+		return Candidate{}, fmt.Errorf("candidate id is required")
+	}
+
+	for _, provider := range r.providers {
+		if strings.EqualFold(provider.Name(), providerName) {
+			return provider.Get(ctx, id)
+		}
+	}
+	return Candidate{}, fmt.Errorf("unknown provider %q", providerName)
 }

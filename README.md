@@ -46,6 +46,12 @@ The first real metadata providers are Open Library and Google Books. Search uses
 all enabled providers by default; pass `--provider openlibrary,googlebooks` to
 limit a search to selected sources.
 
+Save a selected metadata candidate:
+
+```bash
+go run ./cmd/bookbind metadata --provider googlebooks --id <candidate-id> --output bookbind.yaml
+```
+
 Convert a single MP3 file or a directory with MP3 files:
 
 ```bash

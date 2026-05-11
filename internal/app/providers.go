@@ -47,6 +47,14 @@ func ProviderNamesCSV(infos []ProviderInfo) string {
 	return strings.Join(names, ",")
 }
 
+func CanonicalProviderName(name string) (string, error) {
+	provider, err := providerByName(name)
+	if err != nil {
+		return "", err
+	}
+	return provider.Name(), nil
+}
+
 func defaultProviderNames() []string {
 	return []string{"openlibrary", "googlebooks"}
 }
