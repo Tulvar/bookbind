@@ -2,7 +2,7 @@
 
 `bookbind` converts MP3 audiobook files into M4B.
 
-Current milestone: `v0.2.0`.
+Current milestone: `v0.3.0`.
 
 The current focus is a reliable Go core that can be reused by CLI, tests, and
 the future desktop UI.
@@ -144,6 +144,16 @@ The release workflow builds CLI artifacts named with the version, for example
 runs.
 
 ## Milestones
+
+### v0.3.0
+
+- Open Library and Google Books metadata providers
+- provider selection via `--provider`
+- searchable candidate tables with confidence scores
+- metadata preview and selected candidate export to `bookbind.yaml`
+- interactive metadata selection for convert via `--interactive --select`
+- local provider response cache with `cache list` and `cache clean`
+- versioned release builds for Windows, macOS, and Linux
 
 ### v0.2.0
 
