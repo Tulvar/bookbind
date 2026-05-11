@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/Tulvar/bookbind/internal/audio"
+	"github.com/Tulvar/bookbind/internal/providers"
 )
 
 func TestReorderFlagArgsAllowsFlagsAfterPositional(t *testing.T) {
@@ -143,6 +144,53 @@ func TestReorderFlagArgsAllowsMetadataFlags(t *testing.T) {
 		if got[i] != want[i] {
 			t.Fatalf("got[%d] = %q, want %q: %#v", i, got[i], want[i], got)
 		}
+	}
+}
+
+func TestPrintSearchCandidatesUsesTable(t *testing.T) {
+	var buffer bytes.Buffer
+
+	err := printSearchCandidates(&buffer, []providers.Candidate{
+		{
+			Provider:   "googlebooks",
+			ID:         "abc",
+			Title:      "Night Watch",
+			Authors:    []string{"Sergey Lukyanenko"},
+			Year:       1998,
+			Confidence: 0.95,
+		},
+	})
+	if err != nil {
+		t.Fatalf("printSearchCandidates() error = %v", err)
+	}
+
+	got := buffer.String()
+	for _, want := range []string{
+		"Candidates: 1",
+		"#  Provider",
+		"1  googlebooks",
+		"abc",
+		"Night Watch",
+		"Sergey Lukyanenko",
+		"1998",
+		"0.95",
+	} {
+		if !strings.Contains(got, want) {
+			t.Fatalf("output does not contain %q:\n%s", want, got)
+		}
+	}
+}
+
+func TestPrintSearchCandidatesHandlesEmptyResult(t *testing.T) {
+	var buffer bytes.Buffer
+
+	if err := printSearchCandidates(&buffer, nil); err != nil {
+		t.Fatalf("printSearchCandidates() error = %v", err)
+	}
+
+	got := buffer.String()
+	if got != "Candidates: 0\n" {
+		t.Fatalf("output = %q", got)
 	}
 }
 
