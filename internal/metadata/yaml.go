@@ -89,9 +89,11 @@ func normalizeEmptyPublishedYear(node *yaml.Node) {
 	for i := 0; i+1 < len(node.Content); i += 2 {
 		key := node.Content[i]
 		value := node.Content[i+1]
-		if key.Value == "published_year" && value.Kind == yaml.ScalarNode && value.Value == "" {
+		if key.Value == "published_year" && value.Kind == yaml.ScalarNode {
+			if value.Value == "" {
+				value.Value = "0"
+			}
 			value.Tag = "!!int"
-			value.Value = "0"
 		}
 	}
 }

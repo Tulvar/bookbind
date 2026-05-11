@@ -40,6 +40,26 @@ func TestRegistryRejectsEmptyQuery(t *testing.T) {
 	}
 }
 
+func TestRegistryGetUsesSelectedProvider(t *testing.T) {
+	got, err := NewRegistry(stubProvider{candidates: []Candidate{
+		{ID: "book-1", Title: "Book"},
+	}}).Get(context.Background(), "stub", "book-1")
+	if err != nil {
+		t.Fatalf("Get() error = %v", err)
+	}
+
+	if got.Title != "Book" {
+		t.Fatalf("Title = %q", got.Title)
+	}
+}
+
+func TestRegistryGetRejectsUnknownProvider(t *testing.T) {
+	_, err := NewRegistry(stubProvider{}).Get(context.Background(), "unknown", "book-1")
+	if err == nil {
+		t.Fatal("Get() error = nil, want error")
+	}
+}
+
 type stubProvider struct {
 	candidates []Candidate
 }
@@ -52,6 +72,11 @@ func (p stubProvider) Search(context.Context, SearchQuery) ([]Candidate, error) 
 	return p.candidates, nil
 }
 
-func (p stubProvider) Get(context.Context, string) (Candidate, error) {
+func (p stubProvider) Get(_ context.Context, id string) (Candidate, error) {
+	for _, candidate := range p.candidates {
+		if candidate.ID == id {
+			return candidate, nil
+		}
+	}
 	return Candidate{}, nil
 }

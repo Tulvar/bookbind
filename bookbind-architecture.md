@@ -1043,15 +1043,20 @@ bookbind providers
 Сделать:
 
 ```text
-- табличный вывод кандидатов
-- выбор варианта
-- просмотр подробностей
-- сохранение выбранных метаданных в bookbind.yaml
+- [x] кандидаты содержат provider:id для выбора
+- [x] resolve выбранного provider:id
+- [x] сохранение выбранных метаданных в bookbind.yaml
+- [ ] табличный вывод кандидатов
+- [ ] выбор варианта
+- [ ] просмотр подробностей
+- [ ] convert --interactive
 ```
 
 Результат:
 
 ```bash
+bookbind search --title "Ночной дозор"
+bookbind metadata --provider googlebooks --id <candidate-id> --output bookbind.yaml
 bookbind convert ./book.mp3 --interactive
 ```
 
