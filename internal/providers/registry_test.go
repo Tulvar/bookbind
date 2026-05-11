@@ -51,6 +51,9 @@ func TestRegistryGetUsesSelectedProvider(t *testing.T) {
 	if got.Title != "Book" {
 		t.Fatalf("Title = %q", got.Title)
 	}
+	if got.Provider != "stub" {
+		t.Fatalf("Provider = %q", got.Provider)
+	}
 }
 
 func TestRegistryGetRejectsUnknownProvider(t *testing.T) {

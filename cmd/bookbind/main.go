@@ -6,12 +6,14 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 	"strings"
 	"text/tabwriter"
 	"time"
 
 	"github.com/Tulvar/bookbind/internal/app"
 	"github.com/Tulvar/bookbind/internal/audio"
+	"github.com/Tulvar/bookbind/internal/filename"
 	"github.com/Tulvar/bookbind/internal/metadata"
 	"github.com/Tulvar/bookbind/internal/providers"
 	"github.com/Tulvar/bookbind/pkg/version"
@@ -375,6 +377,9 @@ func runConvert(ctx context.Context, application *app.App, args []string, stdout
 	cover := fs.String("cover", "", "cover image path")
 	chapterEvery := fs.String("chapter-every", "", "create synthetic chapters at the given interval, for example 10m")
 	dryRun := fs.Bool("dry-run", false, "print planned work without creating output")
+	interactive := fs.Bool("interactive", false, "search metadata before conversion")
+	selectIndex := fs.Int("select", 0, "select metadata candidate number when interactive")
+	provider := fs.String("provider", "", "comma-separated metadata providers when interactive")
 	overwrite := fs.Bool("overwrite", false, "overwrite output if it exists")
 
 	if err := fs.Parse(reorderFlagArgs(args, map[string]bool{
@@ -383,6 +388,9 @@ func runConvert(ctx context.Context, application *app.App, args []string, stdout
 		"cover":         true,
 		"chapter-every": true,
 		"dry-run":       false,
+		"interactive":   false,
+		"select":        true,
+		"provider":      true,
 		"overwrite":     false,
 	})); err != nil {
 		return err
@@ -390,11 +398,29 @@ func runConvert(ctx context.Context, application *app.App, args []string, stdout
 	if fs.NArg() != 1 {
 		return fmt.Errorf("convert expects exactly one input path")
 	}
+	inputPath := fs.Arg(0)
+	metadataPath := *metadata
+
+	if *interactive {
+		selectedMetadataPath, err := resolveInteractiveMetadata(ctx, application, interactiveMetadataRequest{
+			InputPath:     inputPath,
+			MetadataPath:  metadataPath,
+			Providers:     splitProviderList(*provider),
+			SelectIndex:   *selectIndex,
+			Overwrite:     *overwrite,
+			SearchStdout:  stdout,
+			DetailsStdout: stdout,
+		})
+		if err != nil {
+			return err
+		}
+		metadataPath = selectedMetadataPath
+	}
 
 	result, err := application.Convert(ctx, app.ConvertRequest{
-		InputPath:    fs.Arg(0),
+		InputPath:    inputPath,
 		OutputPath:   *output,
-		MetadataPath: *metadata,
+		MetadataPath: metadataPath,
 		CoverPath:    *cover,
 		ChapterEvery: *chapterEvery,
 		DryRun:       *dryRun,
@@ -433,6 +459,85 @@ func runConvert(ctx context.Context, application *app.App, args []string, stdout
 	return nil
 }
 
+type interactiveMetadataRequest struct {
+	InputPath     string
+	MetadataPath  string
+	Providers     []string
+	SelectIndex   int
+	Overwrite     bool
+	SearchStdout  io.Writer
+	DetailsStdout io.Writer
+}
+
+func resolveInteractiveMetadata(ctx context.Context, application *app.App, req interactiveMetadataRequest) (string, error) {
+	query := filename.ParsePath(req.InputPath)
+	if query.Title == "" {
+		query.Title = defaultSearchTitle(req.InputPath)
+	}
+
+	searchResult, err := application.SearchMetadata(ctx, app.SearchRequest{
+		Title:     query.Title,
+		Author:    query.Author,
+		Providers: req.Providers,
+	})
+	if err != nil {
+		return "", err
+	}
+	if err := printSearchCandidates(req.SearchStdout, searchResult.Candidates); err != nil {
+		return "", err
+	}
+	if req.SelectIndex <= 0 {
+		return "", fmt.Errorf("convert --interactive requires --select")
+	}
+
+	candidate, err := selectCandidate(searchResult.Candidates, req.SelectIndex)
+	if err != nil {
+		return "", err
+	}
+	if candidate.Provider == "" || candidate.ID == "" {
+		return "", fmt.Errorf("selected candidate does not have provider and id")
+	}
+
+	outputPath := strings.TrimSpace(req.MetadataPath)
+	if outputPath == "" {
+		outputPath = defaultInteractiveMetadataPath(req.InputPath)
+	}
+	selected, err := application.ResolveMetadata(ctx, app.ResolveMetadataRequest{
+		Provider:   candidate.Provider,
+		ID:         candidate.ID,
+		OutputPath: outputPath,
+		Overwrite:  req.Overwrite,
+	})
+	if err != nil {
+		return "", err
+	}
+
+	fmt.Fprintf(req.DetailsStdout, "Selected: %d\n", req.SelectIndex)
+	printMetadataDetails(req.DetailsStdout, selected.Candidate, selected.Book)
+	fmt.Fprintf(req.DetailsStdout, "Metadata: %s\n", selected.OutputPath)
+	fmt.Fprintln(req.DetailsStdout, "Status: written")
+	return selected.OutputPath, nil
+}
+
+func defaultSearchTitle(inputPath string) string {
+	base := filepath.Base(inputPath)
+	if ext := filepath.Ext(base); ext != "" {
+		base = strings.TrimSuffix(base, ext)
+	}
+	if base == "." || base == string(filepath.Separator) {
+		return ""
+	}
+	return base
+}
+
+func defaultInteractiveMetadataPath(inputPath string) string {
+	info, err := os.Stat(inputPath)
+	if err == nil && info.IsDir() {
+		return filepath.Join(inputPath, "bookbind.yaml")
+	}
+	return filepath.Join(filepath.Dir(inputPath), "bookbind.yaml")
+}
+
 func printUsage(w io.Writer) {
 	fmt.Fprintln(w, "bookbind converts MP3 audiobooks to M4B.")
 	fmt.Fprintln(w)
@@ -441,7 +546,7 @@ func printUsage(w io.Writer) {
 	fmt.Fprintln(w, "  bookbind providers")
 	fmt.Fprintln(w, "  bookbind search --title <title> [--author <author>] [--provider openlibrary,googlebooks] [--select 1]")
 	fmt.Fprintln(w, "  bookbind metadata --provider <provider> --id <candidate-id> [--preview] [--output bookbind.yaml]")
-	fmt.Fprintln(w, "  bookbind convert <mp3-or-directory> [--output book.m4b] [--dry-run] [--chapter-every 10m]")
+	fmt.Fprintln(w, "  bookbind convert <mp3-or-directory> [--output book.m4b] [--dry-run] [--chapter-every 10m] [--interactive --select 1]")
 	fmt.Fprintln(w, "  bookbind template <mp3-or-directory> [--output bookbind.yaml]")
 	fmt.Fprintln(w, "  bookbind version")
 }

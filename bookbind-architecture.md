@@ -1049,7 +1049,7 @@ bookbind providers
 - [x] табличный вывод кандидатов
 - [x] просмотр подробностей
 - [x] выбор варианта
-- [ ] convert --interactive
+- [x] convert --interactive
 ```
 
 Результат:
@@ -1059,7 +1059,7 @@ bookbind search --title "Ночной дозор"
 bookbind search --title "Ночной дозор" --select 1 --output bookbind.yaml
 bookbind metadata --provider googlebooks --id <candidate-id> --preview
 bookbind metadata --provider googlebooks --id <candidate-id> --output bookbind.yaml
-bookbind convert ./book.mp3 --interactive
+bookbind convert ./book.mp3 --interactive --select 1
 ```
 
 ---
