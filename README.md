@@ -130,6 +130,16 @@ go test ./...
 go build ./cmd/bookbind
 ```
 
+Release builds are created by pushing a version tag:
+
+```bash
+git tag v0.3.0
+git push origin v0.3.0
+```
+
+The release workflow builds CLI artifacts named with the version, for example
+`bookbind-v0.3.0-linux-amd64` and `bookbind-v0.3.0-windows-amd64.exe`.
+
 `ffmpeg` and `ffprobe` must be available on `PATH` for real inspect/convert
 runs.
 

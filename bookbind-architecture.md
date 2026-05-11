@@ -1411,7 +1411,8 @@ CI нужен обязательно, даже если не в самый пе�
 - проверка ffmpeg/ffprobe, если доступны
 - frontend lint/test
 - Wails build artifacts
-- release workflow для Windows/macOS/Linux
+- [x] release workflow для CLI Windows/macOS/Linux
+- Wails release artifacts для desktop UI
 ```
 
 CI не должен зависеть от внешних metadata providers. Провайдеры тестируются через
