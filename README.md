@@ -81,6 +81,13 @@ Create synthetic chapters for a single MP3:
 go run ./cmd/bookbind convert ./book.mp3 --chapter-every 10m --output ./book.m4b
 ```
 
+Inspect or clean the local cache:
+
+```bash
+go run ./cmd/bookbind cache list
+go run ./cmd/bookbind cache clean
+```
+
 Use manual metadata:
 
 ```bash
