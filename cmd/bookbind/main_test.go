@@ -80,6 +80,23 @@ func TestReorderFlagArgsAllowsChapterEveryAfterPositional(t *testing.T) {
 	}
 }
 
+func TestReorderFlagArgsAllowsSearchFlags(t *testing.T) {
+	got := reorderFlagArgs(
+		[]string{"--title", "Ночной дозор", "--author", "Лукьяненко"},
+		map[string]bool{"title": true, "author": true},
+	)
+	want := []string{"--title", "Ночной дозор", "--author", "Лукьяненко"}
+
+	if len(got) != len(want) {
+		t.Fatalf("len = %d, want %d: %#v", len(got), len(want), got)
+	}
+	for i := range got {
+		if got[i] != want[i] {
+			t.Fatalf("got[%d] = %q, want %q: %#v", i, got[i], want[i], got)
+		}
+	}
+}
+
 func TestPrintEmbeddedTags(t *testing.T) {
 	var buffer bytes.Buffer
 

@@ -34,6 +34,8 @@ func run(ctx context.Context, args []string, stdout, stderr io.Writer) error {
 		return runInspect(ctx, application, args[1:], stdout)
 	case "convert":
 		return runConvert(ctx, application, args[1:], stdout)
+	case "search":
+		return runSearch(ctx, application, args[1:], stdout)
 	case "template":
 		return runTemplate(ctx, application, args[1:], stdout)
 	case "version":
@@ -45,6 +47,48 @@ func run(ctx context.Context, args []string, stdout, stderr io.Writer) error {
 	default:
 		return fmt.Errorf("unknown command %q", args[0])
 	}
+}
+
+func runSearch(ctx context.Context, application *app.App, args []string, stdout io.Writer) error {
+	fs := flag.NewFlagSet("search", flag.ContinueOnError)
+	fs.SetOutput(io.Discard)
+
+	title := fs.String("title", "", "book title")
+	author := fs.String("author", "", "book author")
+
+	if err := fs.Parse(reorderFlagArgs(args, map[string]bool{
+		"title":  true,
+		"author": true,
+	})); err != nil {
+		return err
+	}
+	if fs.NArg() != 0 {
+		return fmt.Errorf("search does not accept positional arguments")
+	}
+
+	result, err := application.SearchMetadata(ctx, app.SearchRequest{
+		Title:  *title,
+		Author: *author,
+	})
+	if err != nil {
+		return err
+	}
+
+	fmt.Fprintf(stdout, "Candidates: %d\n", len(result.Candidates))
+	for i, candidate := range result.Candidates {
+		fmt.Fprintf(stdout, "[%d] %s", i+1, candidate.Provider)
+		if candidate.Title != "" {
+			fmt.Fprintf(stdout, "    %s", candidate.Title)
+		}
+		if len(candidate.Authors) > 0 {
+			fmt.Fprintf(stdout, " — %s", strings.Join(candidate.Authors, ", "))
+		}
+		if candidate.Confidence > 0 {
+			fmt.Fprintf(stdout, "    confidence %.2f", candidate.Confidence)
+		}
+		fmt.Fprintln(stdout)
+	}
+	return nil
 }
 
 func runTemplate(ctx context.Context, application *app.App, args []string, stdout io.Writer) error {
@@ -240,6 +284,7 @@ func printUsage(w io.Writer) {
 	fmt.Fprintln(w)
 	fmt.Fprintln(w, "Usage:")
 	fmt.Fprintln(w, "  bookbind inspect <mp3-or-directory>")
+	fmt.Fprintln(w, "  bookbind search --title <title> [--author <author>]")
 	fmt.Fprintln(w, "  bookbind convert <mp3-or-directory> [--output book.m4b] [--dry-run] [--chapter-every 10m]")
 	fmt.Fprintln(w, "  bookbind template <mp3-or-directory> [--output bookbind.yaml]")
 	fmt.Fprintln(w, "  bookbind version")
