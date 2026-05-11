@@ -130,6 +130,13 @@ go test ./...
 go build ./cmd/bookbind
 ```
 
+Run the desktop shell locally:
+
+```bash
+cd desktop
+wails dev
+```
+
 Release builds are created by pushing a version tag:
 
 ```bash
