@@ -36,6 +36,8 @@ func run(ctx context.Context, args []string, stdout, stderr io.Writer) error {
 		return runConvert(ctx, application, args[1:], stdout)
 	case "search":
 		return runSearch(ctx, application, args[1:], stdout)
+	case "providers":
+		return runProviders(stdout)
 	case "template":
 		return runTemplate(ctx, application, args[1:], stdout)
 	case "version":
@@ -55,10 +57,12 @@ func runSearch(ctx context.Context, application *app.App, args []string, stdout 
 
 	title := fs.String("title", "", "book title")
 	author := fs.String("author", "", "book author")
+	provider := fs.String("provider", "", "comma-separated metadata providers")
 
 	if err := fs.Parse(reorderFlagArgs(args, map[string]bool{
-		"title":  true,
-		"author": true,
+		"title":    true,
+		"author":   true,
+		"provider": true,
 	})); err != nil {
 		return err
 	}
@@ -67,8 +71,9 @@ func runSearch(ctx context.Context, application *app.App, args []string, stdout 
 	}
 
 	result, err := application.SearchMetadata(ctx, app.SearchRequest{
-		Title:  *title,
-		Author: *author,
+		Title:     *title,
+		Author:    *author,
+		Providers: splitProviderList(*provider),
 	})
 	if err != nil {
 		return err
@@ -87,6 +92,17 @@ func runSearch(ctx context.Context, application *app.App, args []string, stdout 
 			fmt.Fprintf(stdout, "    confidence %.2f", candidate.Confidence)
 		}
 		fmt.Fprintln(stdout)
+	}
+	return nil
+}
+
+func runProviders(stdout io.Writer) error {
+	for _, provider := range app.AvailableProviders() {
+		status := "disabled"
+		if provider.Enabled {
+			status = "enabled"
+		}
+		fmt.Fprintf(stdout, "%s\t%s\n", provider.Name, status)
 	}
 	return nil
 }
@@ -284,7 +300,8 @@ func printUsage(w io.Writer) {
 	fmt.Fprintln(w)
 	fmt.Fprintln(w, "Usage:")
 	fmt.Fprintln(w, "  bookbind inspect <mp3-or-directory>")
-	fmt.Fprintln(w, "  bookbind search --title <title> [--author <author>]")
+	fmt.Fprintln(w, "  bookbind providers")
+	fmt.Fprintln(w, "  bookbind search --title <title> [--author <author>] [--provider openlibrary,googlebooks]")
 	fmt.Fprintln(w, "  bookbind convert <mp3-or-directory> [--output book.m4b] [--dry-run] [--chapter-every 10m]")
 	fmt.Fprintln(w, "  bookbind template <mp3-or-directory> [--output bookbind.yaml]")
 	fmt.Fprintln(w, "  bookbind version")
@@ -339,4 +356,20 @@ func reorderFlagArgs(args []string, valueFlags map[string]bool) []string {
 	}
 
 	return append(flags, positionals...)
+}
+
+func splitProviderList(value string) []string {
+	if strings.TrimSpace(value) == "" {
+		return nil
+	}
+
+	parts := strings.Split(value, ",")
+	providers := make([]string, 0, len(parts))
+	for _, part := range parts {
+		name := strings.TrimSpace(part)
+		if name != "" {
+			providers = append(providers, name)
+		}
+	}
+	return providers
 }

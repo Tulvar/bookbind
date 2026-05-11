@@ -33,9 +33,18 @@ Search metadata candidates:
 
 ```bash
 go run ./cmd/bookbind search --title "Ночной дозор" --author "Лукьяненко"
+go run ./cmd/bookbind search --title "Ночной дозор" --provider openlibrary
 ```
 
-The first real metadata providers are Open Library and Google Books.
+List available metadata providers:
+
+```bash
+go run ./cmd/bookbind providers
+```
+
+The first real metadata providers are Open Library and Google Books. Search uses
+all enabled providers by default; pass `--provider openlibrary,googlebooks` to
+limit a search to selected sources.
 
 Convert a single MP3 file or a directory with MP3 files:
 

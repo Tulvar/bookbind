@@ -82,10 +82,10 @@ func TestReorderFlagArgsAllowsChapterEveryAfterPositional(t *testing.T) {
 
 func TestReorderFlagArgsAllowsSearchFlags(t *testing.T) {
 	got := reorderFlagArgs(
-		[]string{"--title", "Ночной дозор", "--author", "Лукьяненко"},
-		map[string]bool{"title": true, "author": true},
+		[]string{"--title", "Ночной дозор", "--author", "Лукьяненко", "--provider", "openlibrary,googlebooks"},
+		map[string]bool{"title": true, "author": true, "provider": true},
 	)
-	want := []string{"--title", "Ночной дозор", "--author", "Лукьяненко"}
+	want := []string{"--title", "Ночной дозор", "--author", "Лукьяненко", "--provider", "openlibrary,googlebooks"}
 
 	if len(got) != len(want) {
 		t.Fatalf("len = %d, want %d: %#v", len(got), len(want), got)
@@ -93,6 +93,38 @@ func TestReorderFlagArgsAllowsSearchFlags(t *testing.T) {
 	for i := range got {
 		if got[i] != want[i] {
 			t.Fatalf("got[%d] = %q, want %q: %#v", i, got[i], want[i], got)
+		}
+	}
+}
+
+func TestSplitProviderList(t *testing.T) {
+	got := splitProviderList(" openlibrary, googlebooks,, ")
+	want := []string{"openlibrary", "googlebooks"}
+
+	if len(got) != len(want) {
+		t.Fatalf("len = %d, want %d: %#v", len(got), len(want), got)
+	}
+	for i := range got {
+		if got[i] != want[i] {
+			t.Fatalf("got[%d] = %q, want %q: %#v", i, got[i], want[i], got)
+		}
+	}
+}
+
+func TestRunProviders(t *testing.T) {
+	var buffer bytes.Buffer
+
+	if err := runProviders(&buffer); err != nil {
+		t.Fatalf("runProviders() error = %v", err)
+	}
+
+	got := buffer.String()
+	for _, want := range []string{
+		"openlibrary\tenabled",
+		"googlebooks\tenabled",
+	} {
+		if !strings.Contains(got, want) {
+			t.Fatalf("output does not contain %q:\n%s", want, got)
 		}
 	}
 }

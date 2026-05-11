@@ -28,3 +28,15 @@ func TestSearchMetadata(t *testing.T) {
 		t.Fatalf("Confidence = %v, want 1", got.Candidates[0].Confidence)
 	}
 }
+
+func TestSearchMetadataRejectsUnknownProvider(t *testing.T) {
+	app := New()
+
+	_, err := app.SearchMetadata(context.Background(), SearchRequest{
+		Title:     "Book",
+		Providers: []string{"unknown"},
+	})
+	if err == nil {
+		t.Fatal("SearchMetadata() error = nil, want error")
+	}
+}

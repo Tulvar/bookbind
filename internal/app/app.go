@@ -4,8 +4,6 @@ import (
 	"github.com/Tulvar/bookbind/internal/audio"
 	"github.com/Tulvar/bookbind/internal/m4b"
 	"github.com/Tulvar/bookbind/internal/providers"
-	"github.com/Tulvar/bookbind/internal/providers/googlebooks"
-	"github.com/Tulvar/bookbind/internal/providers/openlibrary"
 )
 
 // App exposes bookbind use cases to CLI, desktop UI, and tests.
@@ -18,10 +16,14 @@ type App struct {
 type Option func(*App)
 
 func New(options ...Option) *App {
+	registry, err := NewProviderRegistry(nil)
+	if err != nil {
+		panic(err)
+	}
 	app := &App{
 		inspector: audio.NewInspector(),
 		builder:   m4b.NewBuilder("ffmpeg"),
-		providers: providers.NewRegistry(openlibrary.New(), googlebooks.New()),
+		providers: registry,
 	}
 	for _, option := range options {
 		option(app)

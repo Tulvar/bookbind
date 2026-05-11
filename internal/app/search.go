@@ -8,8 +8,9 @@ import (
 )
 
 type SearchRequest struct {
-	Title  string
-	Author string
+	Title     string
+	Author    string
+	Providers []string
 }
 
 type SearchResult struct {
@@ -21,7 +22,16 @@ func (a *App) SearchMetadata(ctx context.Context, req SearchRequest) (SearchResu
 		return SearchResult{}, fmt.Errorf("metadata providers are not configured")
 	}
 
-	candidates, err := a.providers.Search(ctx, providers.SearchQuery{
+	registry := a.providers
+	if len(req.Providers) > 0 {
+		selected, err := NewProviderRegistry(req.Providers)
+		if err != nil {
+			return SearchResult{}, err
+		}
+		registry = selected
+	}
+
+	candidates, err := registry.Search(ctx, providers.SearchQuery{
 		Title:  req.Title,
 		Author: req.Author,
 	})
