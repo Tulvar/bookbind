@@ -45,6 +45,8 @@ func run(ctx context.Context, args []string, stdout, stderr io.Writer) error {
 		return runProviders(stdout)
 	case "metadata":
 		return runMetadata(ctx, application, args[1:], stdout)
+	case "cache":
+		return runCache(application, args[1:], stdout)
 	case "template":
 		return runTemplate(ctx, application, args[1:], stdout)
 	case "version":
@@ -244,6 +246,74 @@ func runProviders(stdout io.Writer) error {
 		}
 		fmt.Fprintf(stdout, "%s\t%s\n", provider.Name, status)
 	}
+	return nil
+}
+
+func runCache(application *app.App, args []string, stdout io.Writer) error {
+	if len(args) == 0 {
+		return fmt.Errorf("cache expects subcommand: list or clean")
+	}
+
+	switch args[0] {
+	case "list":
+		return runCacheList(application, args[1:], stdout)
+	case "clean":
+		return runCacheClean(application, args[1:], stdout)
+	default:
+		return fmt.Errorf("unknown cache subcommand %q", args[0])
+	}
+}
+
+func runCacheList(application *app.App, args []string, stdout io.Writer) error {
+	fs := flag.NewFlagSet("cache list", flag.ContinueOnError)
+	fs.SetOutput(io.Discard)
+	path := fs.String("path", "", "cache path")
+
+	if err := fs.Parse(reorderFlagArgs(args, map[string]bool{"path": true})); err != nil {
+		return err
+	}
+	if fs.NArg() != 0 {
+		return fmt.Errorf("cache list does not accept positional arguments")
+	}
+
+	result, err := application.ListCache(*path)
+	if err != nil {
+		return err
+	}
+
+	fmt.Fprintf(stdout, "Cache: %s\n", result.Path)
+	fmt.Fprintf(stdout, "Entries: %d\n", len(result.Entries))
+	fmt.Fprintf(stdout, "Size: %s\n", formatBytes(result.Size))
+	for _, entry := range result.Entries {
+		kind := "file"
+		if entry.IsDir {
+			kind = "dir"
+		}
+		fmt.Fprintf(stdout, "  - %s\t%s\t%s\n", kind, formatBytes(entry.Size), filepath.Base(entry.Path))
+	}
+	return nil
+}
+
+func runCacheClean(application *app.App, args []string, stdout io.Writer) error {
+	fs := flag.NewFlagSet("cache clean", flag.ContinueOnError)
+	fs.SetOutput(io.Discard)
+	path := fs.String("path", "", "cache path")
+
+	if err := fs.Parse(reorderFlagArgs(args, map[string]bool{"path": true})); err != nil {
+		return err
+	}
+	if fs.NArg() != 0 {
+		return fmt.Errorf("cache clean does not accept positional arguments")
+	}
+
+	result, err := application.CleanCache(*path)
+	if err != nil {
+		return err
+	}
+
+	fmt.Fprintf(stdout, "Cache: %s\n", result.Path)
+	fmt.Fprintf(stdout, "Removed: %d\n", result.Removed)
+	fmt.Fprintf(stdout, "Freed: %s\n", formatBytes(result.RemovedSize))
 	return nil
 }
 
@@ -547,6 +617,7 @@ func printUsage(w io.Writer) {
 	fmt.Fprintln(w, "  bookbind search --title <title> [--author <author>] [--provider openlibrary,googlebooks] [--select 1]")
 	fmt.Fprintln(w, "  bookbind metadata --provider <provider> --id <candidate-id> [--preview] [--output bookbind.yaml]")
 	fmt.Fprintln(w, "  bookbind convert <mp3-or-directory> [--output book.m4b] [--dry-run] [--chapter-every 10m] [--interactive --select 1]")
+	fmt.Fprintln(w, "  bookbind cache list|clean")
 	fmt.Fprintln(w, "  bookbind template <mp3-or-directory> [--output bookbind.yaml]")
 	fmt.Fprintln(w, "  bookbind version")
 }
@@ -586,6 +657,21 @@ func formatConfidence(confidence float64) string {
 		return ""
 	}
 	return fmt.Sprintf("%.2f", confidence)
+}
+
+func formatBytes(size int64) string {
+	const unit = int64(1024)
+	if size < unit {
+		return fmt.Sprintf("%d B", size)
+	}
+	value := float64(size)
+	for _, suffix := range []string{"KiB", "MiB", "GiB"} {
+		value /= float64(unit)
+		if value < float64(unit) {
+			return fmt.Sprintf("%.1f %s", value, suffix)
+		}
+	}
+	return fmt.Sprintf("%.1f TiB", value/float64(unit))
 }
 
 func reorderFlagArgs(args []string, valueFlags map[string]bool) []string {

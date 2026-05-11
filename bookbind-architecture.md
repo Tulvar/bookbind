@@ -1071,10 +1071,11 @@ bookbind convert ./book.mp3 --interactive --select 1
 Сделать:
 
 ```text
-- SQLite cache
+- [ ] SQLite cache
 - cache for provider responses
 - cache for selected matches
-- cache clean command
+- [x] cache clean command
+- [x] cache list command
 ```
 
 Команды:

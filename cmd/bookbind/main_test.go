@@ -227,6 +227,71 @@ func TestRunProviders(t *testing.T) {
 	}
 }
 
+func TestRunCacheList(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, "one.cache"), []byte("123"), 0o644); err != nil {
+		t.Fatalf("WriteFile() error = %v", err)
+	}
+
+	var buffer bytes.Buffer
+	if err := runCacheList(app.New(), []string{"--path", dir}, &buffer); err != nil {
+		t.Fatalf("runCacheList() error = %v", err)
+	}
+
+	got := buffer.String()
+	for _, want := range []string{
+		"Cache: " + dir,
+		"Entries: 1",
+		"Size: 3 B",
+		"one.cache",
+	} {
+		if !strings.Contains(got, want) {
+			t.Fatalf("output does not contain %q:\n%s", want, got)
+		}
+	}
+}
+
+func TestRunCacheClean(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "one.cache")
+	if err := os.WriteFile(path, []byte("123"), 0o644); err != nil {
+		t.Fatalf("WriteFile() error = %v", err)
+	}
+
+	var buffer bytes.Buffer
+	if err := runCacheClean(app.New(), []string{"--path", dir}, &buffer); err != nil {
+		t.Fatalf("runCacheClean() error = %v", err)
+	}
+
+	got := buffer.String()
+	for _, want := range []string{
+		"Cache: " + dir,
+		"Removed: 1",
+		"Freed: 3 B",
+	} {
+		if !strings.Contains(got, want) {
+			t.Fatalf("output does not contain %q:\n%s", want, got)
+		}
+	}
+	if _, err := os.Stat(path); !os.IsNotExist(err) {
+		t.Fatalf("cache file still exists or unexpected stat error: %v", err)
+	}
+}
+
+func TestFormatBytes(t *testing.T) {
+	tests := map[int64]string{
+		0:    "0 B",
+		1023: "1023 B",
+		1024: "1.0 KiB",
+	}
+
+	for size, want := range tests {
+		if got := formatBytes(size); got != want {
+			t.Fatalf("formatBytes(%d) = %q, want %q", size, got, want)
+		}
+	}
+}
+
 func TestReorderFlagArgsAllowsMetadataFlags(t *testing.T) {
 	got := reorderFlagArgs(
 		[]string{"--provider", "googlebooks", "--id", "abc", "--preview", "--output", "bookbind.yaml", "--overwrite"},
