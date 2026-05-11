@@ -1048,7 +1048,7 @@ bookbind providers
 - [x] сохранение выбранных метаданных в bookbind.yaml
 - [x] табличный вывод кандидатов
 - [x] просмотр подробностей
-- [ ] выбор варианта
+- [x] выбор варианта
 - [ ] convert --interactive
 ```
 
@@ -1056,6 +1056,7 @@ bookbind providers
 
 ```bash
 bookbind search --title "Ночной дозор"
+bookbind search --title "Ночной дозор" --select 1 --output bookbind.yaml
 bookbind metadata --provider googlebooks --id <candidate-id> --preview
 bookbind metadata --provider googlebooks --id <candidate-id> --output bookbind.yaml
 bookbind convert ./book.mp3 --interactive

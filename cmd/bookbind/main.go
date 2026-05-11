@@ -63,11 +63,17 @@ func runSearch(ctx context.Context, application *app.App, args []string, stdout 
 	title := fs.String("title", "", "book title")
 	author := fs.String("author", "", "book author")
 	provider := fs.String("provider", "", "comma-separated metadata providers")
+	selectIndex := fs.Int("select", 0, "select candidate number and write metadata")
+	output := fs.String("output", "bookbind.yaml", "metadata yaml output path when selecting")
+	overwrite := fs.Bool("overwrite", false, "overwrite output if it exists")
 
 	if err := fs.Parse(reorderFlagArgs(args, map[string]bool{
-		"title":    true,
-		"author":   true,
-		"provider": true,
+		"title":     true,
+		"author":    true,
+		"provider":  true,
+		"select":    true,
+		"output":    true,
+		"overwrite": false,
 	})); err != nil {
 		return err
 	}
@@ -84,7 +90,36 @@ func runSearch(ctx context.Context, application *app.App, args []string, stdout 
 		return err
 	}
 
-	return printSearchCandidates(stdout, result.Candidates)
+	if err := printSearchCandidates(stdout, result.Candidates); err != nil {
+		return err
+	}
+	if *selectIndex <= 0 {
+		return nil
+	}
+
+	candidate, err := selectCandidate(result.Candidates, *selectIndex)
+	if err != nil {
+		return err
+	}
+	if candidate.Provider == "" || candidate.ID == "" {
+		return fmt.Errorf("selected candidate does not have provider and id")
+	}
+
+	selected, err := application.ResolveMetadata(ctx, app.ResolveMetadataRequest{
+		Provider:   candidate.Provider,
+		ID:         candidate.ID,
+		OutputPath: *output,
+		Overwrite:  *overwrite,
+	})
+	if err != nil {
+		return err
+	}
+
+	fmt.Fprintf(stdout, "Selected: %d\n", *selectIndex)
+	printMetadataDetails(stdout, selected.Candidate, selected.Book)
+	fmt.Fprintf(stdout, "Metadata: %s\n", selected.OutputPath)
+	fmt.Fprintln(stdout, "Status: written")
+	return nil
 }
 
 func printSearchCandidates(stdout io.Writer, candidates []providers.Candidate) error {
@@ -109,6 +144,13 @@ func printSearchCandidates(stdout io.Writer, candidates []providers.Candidate) e
 		)
 	}
 	return table.Flush()
+}
+
+func selectCandidate(candidates []providers.Candidate, index int) (providers.Candidate, error) {
+	if index < 1 || index > len(candidates) {
+		return providers.Candidate{}, fmt.Errorf("candidate selection %d is out of range 1..%d", index, len(candidates))
+	}
+	return candidates[index-1], nil
 }
 
 func runMetadata(ctx context.Context, application *app.App, args []string, stdout io.Writer) error {
@@ -397,7 +439,7 @@ func printUsage(w io.Writer) {
 	fmt.Fprintln(w, "Usage:")
 	fmt.Fprintln(w, "  bookbind inspect <mp3-or-directory>")
 	fmt.Fprintln(w, "  bookbind providers")
-	fmt.Fprintln(w, "  bookbind search --title <title> [--author <author>] [--provider openlibrary,googlebooks]")
+	fmt.Fprintln(w, "  bookbind search --title <title> [--author <author>] [--provider openlibrary,googlebooks] [--select 1]")
 	fmt.Fprintln(w, "  bookbind metadata --provider <provider> --id <candidate-id> [--preview] [--output bookbind.yaml]")
 	fmt.Fprintln(w, "  bookbind convert <mp3-or-directory> [--output book.m4b] [--dry-run] [--chapter-every 10m]")
 	fmt.Fprintln(w, "  bookbind template <mp3-or-directory> [--output bookbind.yaml]")

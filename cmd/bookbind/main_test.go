@@ -84,10 +84,10 @@ func TestReorderFlagArgsAllowsChapterEveryAfterPositional(t *testing.T) {
 
 func TestReorderFlagArgsAllowsSearchFlags(t *testing.T) {
 	got := reorderFlagArgs(
-		[]string{"--title", "Ночной дозор", "--author", "Лукьяненко", "--provider", "openlibrary,googlebooks"},
-		map[string]bool{"title": true, "author": true, "provider": true},
+		[]string{"--title", "Ночной дозор", "--author", "Лукьяненко", "--provider", "openlibrary,googlebooks", "--select", "1", "--output", "bookbind.yaml", "--overwrite"},
+		map[string]bool{"title": true, "author": true, "provider": true, "select": true, "output": true, "overwrite": false},
 	)
-	want := []string{"--title", "Ночной дозор", "--author", "Лукьяненко", "--provider", "openlibrary,googlebooks"}
+	want := []string{"--title", "Ночной дозор", "--author", "Лукьяненко", "--provider", "openlibrary,googlebooks", "--select", "1", "--output", "bookbind.yaml", "--overwrite"}
 
 	if len(got) != len(want) {
 		t.Fatalf("len = %d, want %d: %#v", len(got), len(want), got)
@@ -96,6 +96,27 @@ func TestReorderFlagArgsAllowsSearchFlags(t *testing.T) {
 		if got[i] != want[i] {
 			t.Fatalf("got[%d] = %q, want %q: %#v", i, got[i], want[i], got)
 		}
+	}
+}
+
+func TestSelectCandidate(t *testing.T) {
+	got, err := selectCandidate([]providers.Candidate{
+		{ID: "first"},
+		{ID: "second"},
+	}, 2)
+	if err != nil {
+		t.Fatalf("selectCandidate() error = %v", err)
+	}
+
+	if got.ID != "second" {
+		t.Fatalf("ID = %q", got.ID)
+	}
+}
+
+func TestSelectCandidateRejectsOutOfRange(t *testing.T) {
+	_, err := selectCandidate([]providers.Candidate{{ID: "first"}}, 2)
+	if err == nil {
+		t.Fatal("selectCandidate() error = nil, want error")
 	}
 }
 
