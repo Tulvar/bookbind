@@ -1015,19 +1015,23 @@ bookbind convert ./book.mp3 --metadata bookbind.yaml
 Сделать:
 
 ```text
-- общий Provider interface
-- Google Books provider
-- Open Library provider
-- FantLab provider
-- Candidate model
-- scoring
-- команда search
+- [x] общий Provider interface
+- [x] Google Books provider
+- [x] Open Library provider
+- [ ] FantLab provider
+- [x] Candidate model
+- [x] scoring
+- [x] команда search
+- [x] команда providers
+- [x] выбор источников через --provider
 ```
 
 Результат:
 
 ```bash
 bookbind search --title "Ночной дозор" --author "Лукьяненко"
+bookbind search --title "Ночной дозор" --provider openlibrary
+bookbind providers
 ```
 
 ---
@@ -1039,16 +1043,23 @@ bookbind search --title "Ночной дозор" --author "Лукьяненко
 Сделать:
 
 ```text
-- табличный вывод кандидатов
-- выбор варианта
-- просмотр подробностей
-- сохранение выбранных метаданных в bookbind.yaml
+- [x] кандидаты содержат provider:id для выбора
+- [x] resolve выбранного provider:id
+- [x] сохранение выбранных метаданных в bookbind.yaml
+- [x] табличный вывод кандидатов
+- [x] просмотр подробностей
+- [x] выбор варианта
+- [x] convert --interactive
 ```
 
 Результат:
 
 ```bash
-bookbind convert ./book.mp3 --interactive
+bookbind search --title "Ночной дозор"
+bookbind search --title "Ночной дозор" --select 1 --output bookbind.yaml
+bookbind metadata --provider googlebooks --id <candidate-id> --preview
+bookbind metadata --provider googlebooks --id <candidate-id> --output bookbind.yaml
+bookbind convert ./book.mp3 --interactive --select 1
 ```
 
 ---
@@ -1060,10 +1071,11 @@ bookbind convert ./book.mp3 --interactive
 Сделать:
 
 ```text
-- SQLite cache
-- cache for provider responses
-- cache for selected matches
-- cache clean command
+- [ ] SQLite cache
+- [x] file cache for provider responses
+- [ ] cache for selected matches
+- [x] cache clean command
+- [x] cache list command
 ```
 
 Команды:
@@ -1346,6 +1358,27 @@ feature/chapter-matching-ui
 ci/build-and-test
 ```
 
+Для релизов начиная с `v0.3.0` используется интеграционная релизная ветка:
+
+```text
+main
+  ↑
+release/v0.3.0
+  ↑
+feature/search-providers
+feature/interactive-selection
+feature/cache
+```
+
+Правила:
+
+```text
+- feature-ветки создаются от release/v0.3.0
+- feature-ветки мержатся в release/v0.3.0
+- main получает только готовый release/vX.Y.Z
+- версия в pkg/version обновляется в финальном release PR
+```
+
 ---
 
 ## 20. CI
@@ -1378,7 +1411,8 @@ CI нужен обязательно, даже если не в самый пе�
 - проверка ffmpeg/ffprobe, если доступны
 - frontend lint/test
 - Wails build artifacts
-- release workflow для Windows/macOS/Linux
+- [x] release workflow для CLI Windows/macOS/Linux
+- Wails release artifacts для desktop UI
 ```
 
 CI не должен зависеть от внешних metadata providers. Провайдеры тестируются через

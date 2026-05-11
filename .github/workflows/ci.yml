@@ -5,7 +5,9 @@ on:
     branches:
       - main
       - init
+      - "release/**"
       - "feature/**"
+      - "ci/**"
   pull_request:
 
 jobs:

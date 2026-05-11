@@ -6,11 +6,16 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 	"strings"
+	"text/tabwriter"
 	"time"
 
 	"github.com/Tulvar/bookbind/internal/app"
 	"github.com/Tulvar/bookbind/internal/audio"
+	"github.com/Tulvar/bookbind/internal/filename"
+	"github.com/Tulvar/bookbind/internal/metadata"
+	"github.com/Tulvar/bookbind/internal/providers"
 	"github.com/Tulvar/bookbind/pkg/version"
 )
 
@@ -34,6 +39,14 @@ func run(ctx context.Context, args []string, stdout, stderr io.Writer) error {
 		return runInspect(ctx, application, args[1:], stdout)
 	case "convert":
 		return runConvert(ctx, application, args[1:], stdout)
+	case "search":
+		return runSearch(ctx, application, args[1:], stdout)
+	case "providers":
+		return runProviders(stdout)
+	case "metadata":
+		return runMetadata(ctx, application, args[1:], stdout)
+	case "cache":
+		return runCache(application, args[1:], stdout)
 	case "template":
 		return runTemplate(ctx, application, args[1:], stdout)
 	case "version":
@@ -45,6 +58,263 @@ func run(ctx context.Context, args []string, stdout, stderr io.Writer) error {
 	default:
 		return fmt.Errorf("unknown command %q", args[0])
 	}
+}
+
+func runSearch(ctx context.Context, application *app.App, args []string, stdout io.Writer) error {
+	fs := flag.NewFlagSet("search", flag.ContinueOnError)
+	fs.SetOutput(io.Discard)
+
+	title := fs.String("title", "", "book title")
+	author := fs.String("author", "", "book author")
+	provider := fs.String("provider", "", "comma-separated metadata providers")
+	selectIndex := fs.Int("select", 0, "select candidate number and write metadata")
+	output := fs.String("output", "bookbind.yaml", "metadata yaml output path when selecting")
+	overwrite := fs.Bool("overwrite", false, "overwrite output if it exists")
+
+	if err := fs.Parse(reorderFlagArgs(args, map[string]bool{
+		"title":     true,
+		"author":    true,
+		"provider":  true,
+		"select":    true,
+		"output":    true,
+		"overwrite": false,
+	})); err != nil {
+		return err
+	}
+	if fs.NArg() != 0 {
+		return fmt.Errorf("search does not accept positional arguments")
+	}
+
+	result, err := application.SearchMetadata(ctx, app.SearchRequest{
+		Title:     *title,
+		Author:    *author,
+		Providers: splitProviderList(*provider),
+	})
+	if err != nil {
+		return err
+	}
+
+	if err := printSearchCandidates(stdout, result.Candidates); err != nil {
+		return err
+	}
+	if *selectIndex <= 0 {
+		return nil
+	}
+
+	candidate, err := selectCandidate(result.Candidates, *selectIndex)
+	if err != nil {
+		return err
+	}
+	if candidate.Provider == "" || candidate.ID == "" {
+		return fmt.Errorf("selected candidate does not have provider and id")
+	}
+
+	selected, err := application.ResolveMetadata(ctx, app.ResolveMetadataRequest{
+		Provider:   candidate.Provider,
+		ID:         candidate.ID,
+		OutputPath: *output,
+		Overwrite:  *overwrite,
+	})
+	if err != nil {
+		return err
+	}
+
+	fmt.Fprintf(stdout, "Selected: %d\n", *selectIndex)
+	printMetadataDetails(stdout, selected.Candidate, selected.Book)
+	fmt.Fprintf(stdout, "Metadata: %s\n", selected.OutputPath)
+	fmt.Fprintln(stdout, "Status: written")
+	return nil
+}
+
+func printSearchCandidates(stdout io.Writer, candidates []providers.Candidate) error {
+	fmt.Fprintf(stdout, "Candidates: %d\n", len(candidates))
+	if len(candidates) == 0 {
+		return nil
+	}
+
+	table := tabwriter.NewWriter(stdout, 0, 0, 2, ' ', 0)
+	fmt.Fprintln(table, "#\tProvider\tID\tTitle\tAuthors\tYear\tConfidence")
+	for i, candidate := range candidates {
+		fmt.Fprintf(
+			table,
+			"%d\t%s\t%s\t%s\t%s\t%s\t%s\n",
+			i+1,
+			candidate.Provider,
+			candidate.ID,
+			candidate.Title,
+			strings.Join(candidate.Authors, ", "),
+			formatYear(candidate.Year),
+			formatConfidence(candidate.Confidence),
+		)
+	}
+	return table.Flush()
+}
+
+func selectCandidate(candidates []providers.Candidate, index int) (providers.Candidate, error) {
+	if index < 1 || index > len(candidates) {
+		return providers.Candidate{}, fmt.Errorf("candidate selection %d is out of range 1..%d", index, len(candidates))
+	}
+	return candidates[index-1], nil
+}
+
+func runMetadata(ctx context.Context, application *app.App, args []string, stdout io.Writer) error {
+	fs := flag.NewFlagSet("metadata", flag.ContinueOnError)
+	fs.SetOutput(io.Discard)
+
+	provider := fs.String("provider", "", "metadata provider")
+	id := fs.String("id", "", "provider candidate id")
+	output := fs.String("output", "bookbind.yaml", "metadata yaml output path")
+	preview := fs.Bool("preview", false, "print candidate details without writing metadata")
+	overwrite := fs.Bool("overwrite", false, "overwrite output if it exists")
+
+	if err := fs.Parse(reorderFlagArgs(args, map[string]bool{
+		"provider":  true,
+		"id":        true,
+		"output":    true,
+		"preview":   false,
+		"overwrite": false,
+	})); err != nil {
+		return err
+	}
+	if fs.NArg() != 0 {
+		return fmt.Errorf("metadata does not accept positional arguments")
+	}
+
+	if *preview {
+		result, err := application.PreviewMetadata(ctx, app.PreviewMetadataRequest{
+			Provider: *provider,
+			ID:       *id,
+		})
+		if err != nil {
+			return err
+		}
+		printMetadataDetails(stdout, result.Candidate, result.Book)
+		return nil
+	}
+
+	result, err := application.ResolveMetadata(ctx, app.ResolveMetadataRequest{
+		Provider:   *provider,
+		ID:         *id,
+		OutputPath: *output,
+		Overwrite:  *overwrite,
+	})
+	if err != nil {
+		return err
+	}
+
+	printMetadataDetails(stdout, result.Candidate, result.Book)
+	fmt.Fprintf(stdout, "Metadata: %s\n", result.OutputPath)
+	fmt.Fprintln(stdout, "Status: written")
+	return nil
+}
+
+func printMetadataDetails(stdout io.Writer, candidate providers.Candidate, book metadata.Book) {
+	fmt.Fprintf(stdout, "Provider: %s\n", candidate.Provider)
+	fmt.Fprintf(stdout, "ID: %s\n", candidate.ID)
+	if book.Title != "" {
+		fmt.Fprintf(stdout, "Title: %s\n", book.Title)
+	}
+	if len(book.NormalizedAuthors()) > 0 {
+		fmt.Fprintf(stdout, "Author: %s\n", strings.Join(book.NormalizedAuthors(), ", "))
+	}
+	if len(book.NormalizedNarrators()) > 0 {
+		fmt.Fprintf(stdout, "Narrator: %s\n", strings.Join(book.NormalizedNarrators(), ", "))
+	}
+	if book.Series != "" {
+		fmt.Fprintf(stdout, "Series: %s", book.Series)
+		if book.SeriesIndex != "" {
+			fmt.Fprintf(stdout, " #%s", book.SeriesIndex)
+		}
+		fmt.Fprintln(stdout)
+	}
+	if book.PublishedYear > 0 {
+		fmt.Fprintf(stdout, "Published year: %d\n", book.PublishedYear)
+	}
+	if book.Cover != "" {
+		fmt.Fprintf(stdout, "Cover: %s\n", book.Cover)
+	}
+	if candidate.Confidence > 0 {
+		fmt.Fprintf(stdout, "Confidence: %.2f\n", candidate.Confidence)
+	}
+}
+
+func runProviders(stdout io.Writer) error {
+	for _, provider := range app.AvailableProviders() {
+		status := "disabled"
+		if provider.Enabled {
+			status = "enabled"
+		}
+		fmt.Fprintf(stdout, "%s\t%s\n", provider.Name, status)
+	}
+	return nil
+}
+
+func runCache(application *app.App, args []string, stdout io.Writer) error {
+	if len(args) == 0 {
+		return fmt.Errorf("cache expects subcommand: list or clean")
+	}
+
+	switch args[0] {
+	case "list":
+		return runCacheList(application, args[1:], stdout)
+	case "clean":
+		return runCacheClean(application, args[1:], stdout)
+	default:
+		return fmt.Errorf("unknown cache subcommand %q", args[0])
+	}
+}
+
+func runCacheList(application *app.App, args []string, stdout io.Writer) error {
+	fs := flag.NewFlagSet("cache list", flag.ContinueOnError)
+	fs.SetOutput(io.Discard)
+	path := fs.String("path", "", "cache path")
+
+	if err := fs.Parse(reorderFlagArgs(args, map[string]bool{"path": true})); err != nil {
+		return err
+	}
+	if fs.NArg() != 0 {
+		return fmt.Errorf("cache list does not accept positional arguments")
+	}
+
+	result, err := application.ListCache(*path)
+	if err != nil {
+		return err
+	}
+
+	fmt.Fprintf(stdout, "Cache: %s\n", result.Path)
+	fmt.Fprintf(stdout, "Entries: %d\n", len(result.Entries))
+	fmt.Fprintf(stdout, "Size: %s\n", formatBytes(result.Size))
+	for _, entry := range result.Entries {
+		kind := "file"
+		if entry.IsDir {
+			kind = "dir"
+		}
+		fmt.Fprintf(stdout, "  - %s\t%s\t%s\n", kind, formatBytes(entry.Size), filepath.Base(entry.Path))
+	}
+	return nil
+}
+
+func runCacheClean(application *app.App, args []string, stdout io.Writer) error {
+	fs := flag.NewFlagSet("cache clean", flag.ContinueOnError)
+	fs.SetOutput(io.Discard)
+	path := fs.String("path", "", "cache path")
+
+	if err := fs.Parse(reorderFlagArgs(args, map[string]bool{"path": true})); err != nil {
+		return err
+	}
+	if fs.NArg() != 0 {
+		return fmt.Errorf("cache clean does not accept positional arguments")
+	}
+
+	result, err := application.CleanCache(*path)
+	if err != nil {
+		return err
+	}
+
+	fmt.Fprintf(stdout, "Cache: %s\n", result.Path)
+	fmt.Fprintf(stdout, "Removed: %d\n", result.Removed)
+	fmt.Fprintf(stdout, "Freed: %s\n", formatBytes(result.RemovedSize))
+	return nil
 }
 
 func runTemplate(ctx context.Context, application *app.App, args []string, stdout io.Writer) error {
@@ -177,6 +447,9 @@ func runConvert(ctx context.Context, application *app.App, args []string, stdout
 	cover := fs.String("cover", "", "cover image path")
 	chapterEvery := fs.String("chapter-every", "", "create synthetic chapters at the given interval, for example 10m")
 	dryRun := fs.Bool("dry-run", false, "print planned work without creating output")
+	interactive := fs.Bool("interactive", false, "search metadata before conversion")
+	selectIndex := fs.Int("select", 0, "select metadata candidate number when interactive")
+	provider := fs.String("provider", "", "comma-separated metadata providers when interactive")
 	overwrite := fs.Bool("overwrite", false, "overwrite output if it exists")
 
 	if err := fs.Parse(reorderFlagArgs(args, map[string]bool{
@@ -185,6 +458,9 @@ func runConvert(ctx context.Context, application *app.App, args []string, stdout
 		"cover":         true,
 		"chapter-every": true,
 		"dry-run":       false,
+		"interactive":   false,
+		"select":        true,
+		"provider":      true,
 		"overwrite":     false,
 	})); err != nil {
 		return err
@@ -192,11 +468,29 @@ func runConvert(ctx context.Context, application *app.App, args []string, stdout
 	if fs.NArg() != 1 {
 		return fmt.Errorf("convert expects exactly one input path")
 	}
+	inputPath := fs.Arg(0)
+	metadataPath := *metadata
+
+	if *interactive {
+		selectedMetadataPath, err := resolveInteractiveMetadata(ctx, application, interactiveMetadataRequest{
+			InputPath:     inputPath,
+			MetadataPath:  metadataPath,
+			Providers:     splitProviderList(*provider),
+			SelectIndex:   *selectIndex,
+			Overwrite:     *overwrite,
+			SearchStdout:  stdout,
+			DetailsStdout: stdout,
+		})
+		if err != nil {
+			return err
+		}
+		metadataPath = selectedMetadataPath
+	}
 
 	result, err := application.Convert(ctx, app.ConvertRequest{
-		InputPath:    fs.Arg(0),
+		InputPath:    inputPath,
 		OutputPath:   *output,
-		MetadataPath: *metadata,
+		MetadataPath: metadataPath,
 		CoverPath:    *cover,
 		ChapterEvery: *chapterEvery,
 		DryRun:       *dryRun,
@@ -235,12 +529,95 @@ func runConvert(ctx context.Context, application *app.App, args []string, stdout
 	return nil
 }
 
+type interactiveMetadataRequest struct {
+	InputPath     string
+	MetadataPath  string
+	Providers     []string
+	SelectIndex   int
+	Overwrite     bool
+	SearchStdout  io.Writer
+	DetailsStdout io.Writer
+}
+
+func resolveInteractiveMetadata(ctx context.Context, application *app.App, req interactiveMetadataRequest) (string, error) {
+	query := filename.ParsePath(req.InputPath)
+	if query.Title == "" {
+		query.Title = defaultSearchTitle(req.InputPath)
+	}
+
+	searchResult, err := application.SearchMetadata(ctx, app.SearchRequest{
+		Title:     query.Title,
+		Author:    query.Author,
+		Providers: req.Providers,
+	})
+	if err != nil {
+		return "", err
+	}
+	if err := printSearchCandidates(req.SearchStdout, searchResult.Candidates); err != nil {
+		return "", err
+	}
+	if req.SelectIndex <= 0 {
+		return "", fmt.Errorf("convert --interactive requires --select")
+	}
+
+	candidate, err := selectCandidate(searchResult.Candidates, req.SelectIndex)
+	if err != nil {
+		return "", err
+	}
+	if candidate.Provider == "" || candidate.ID == "" {
+		return "", fmt.Errorf("selected candidate does not have provider and id")
+	}
+
+	outputPath := strings.TrimSpace(req.MetadataPath)
+	if outputPath == "" {
+		outputPath = defaultInteractiveMetadataPath(req.InputPath)
+	}
+	selected, err := application.ResolveMetadata(ctx, app.ResolveMetadataRequest{
+		Provider:   candidate.Provider,
+		ID:         candidate.ID,
+		OutputPath: outputPath,
+		Overwrite:  req.Overwrite,
+	})
+	if err != nil {
+		return "", err
+	}
+
+	fmt.Fprintf(req.DetailsStdout, "Selected: %d\n", req.SelectIndex)
+	printMetadataDetails(req.DetailsStdout, selected.Candidate, selected.Book)
+	fmt.Fprintf(req.DetailsStdout, "Metadata: %s\n", selected.OutputPath)
+	fmt.Fprintln(req.DetailsStdout, "Status: written")
+	return selected.OutputPath, nil
+}
+
+func defaultSearchTitle(inputPath string) string {
+	base := filepath.Base(inputPath)
+	if ext := filepath.Ext(base); ext != "" {
+		base = strings.TrimSuffix(base, ext)
+	}
+	if base == "." || base == string(filepath.Separator) {
+		return ""
+	}
+	return base
+}
+
+func defaultInteractiveMetadataPath(inputPath string) string {
+	info, err := os.Stat(inputPath)
+	if err == nil && info.IsDir() {
+		return filepath.Join(inputPath, "bookbind.yaml")
+	}
+	return filepath.Join(filepath.Dir(inputPath), "bookbind.yaml")
+}
+
 func printUsage(w io.Writer) {
 	fmt.Fprintln(w, "bookbind converts MP3 audiobooks to M4B.")
 	fmt.Fprintln(w)
 	fmt.Fprintln(w, "Usage:")
 	fmt.Fprintln(w, "  bookbind inspect <mp3-or-directory>")
-	fmt.Fprintln(w, "  bookbind convert <mp3-or-directory> [--output book.m4b] [--dry-run] [--chapter-every 10m]")
+	fmt.Fprintln(w, "  bookbind providers")
+	fmt.Fprintln(w, "  bookbind search --title <title> [--author <author>] [--provider openlibrary,googlebooks] [--select 1]")
+	fmt.Fprintln(w, "  bookbind metadata --provider <provider> --id <candidate-id> [--preview] [--output bookbind.yaml]")
+	fmt.Fprintln(w, "  bookbind convert <mp3-or-directory> [--output book.m4b] [--dry-run] [--chapter-every 10m] [--interactive --select 1]")
+	fmt.Fprintln(w, "  bookbind cache list|clean")
 	fmt.Fprintln(w, "  bookbind template <mp3-or-directory> [--output bookbind.yaml]")
 	fmt.Fprintln(w, "  bookbind version")
 }
@@ -266,6 +643,35 @@ func formatTimecode(duration time.Duration) string {
 		return fmt.Sprintf("%d:%02d:%02d.%03d", hours, minutes, seconds, millis)
 	}
 	return fmt.Sprintf("%02d:%02d.%03d", minutes, seconds, millis)
+}
+
+func formatYear(year int) string {
+	if year <= 0 {
+		return ""
+	}
+	return fmt.Sprintf("%d", year)
+}
+
+func formatConfidence(confidence float64) string {
+	if confidence <= 0 {
+		return ""
+	}
+	return fmt.Sprintf("%.2f", confidence)
+}
+
+func formatBytes(size int64) string {
+	const unit = int64(1024)
+	if size < unit {
+		return fmt.Sprintf("%d B", size)
+	}
+	value := float64(size)
+	for _, suffix := range []string{"KiB", "MiB", "GiB"} {
+		value /= float64(unit)
+		if value < float64(unit) {
+			return fmt.Sprintf("%.1f %s", value, suffix)
+		}
+	}
+	return fmt.Sprintf("%.1f TiB", value/float64(unit))
 }
 
 func reorderFlagArgs(args []string, valueFlags map[string]bool) []string {
@@ -294,4 +700,20 @@ func reorderFlagArgs(args []string, valueFlags map[string]bool) []string {
 	}
 
 	return append(flags, positionals...)
+}
+
+func splitProviderList(value string) []string {
+	if strings.TrimSpace(value) == "" {
+		return nil
+	}
+
+	parts := strings.Split(value, ",")
+	providers := make([]string, 0, len(parts))
+	for _, part := range parts {
+		name := strings.TrimSpace(part)
+		if name != "" {
+			providers = append(providers, name)
+		}
+	}
+	return providers
 }

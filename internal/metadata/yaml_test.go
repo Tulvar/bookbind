@@ -60,6 +60,24 @@ published_year: ""
 	}
 }
 
+func TestLoadYAMLAllowsStringPublishedYear(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "bookbind.yaml")
+	data := []byte(`title: "Night Watch"
+published_year: "1998"
+`)
+	if err := os.WriteFile(path, data, 0o644); err != nil {
+		t.Fatalf("write metadata: %v", err)
+	}
+
+	book, err := LoadYAML(path)
+	if err != nil {
+		t.Fatalf("LoadYAML() error = %v", err)
+	}
+	if book.PublishedYear != 1998 {
+		t.Fatalf("PublishedYear = %d, want 1998", book.PublishedYear)
+	}
+}
+
 func TestBookEmpty(t *testing.T) {
 	empty := Book{}
 	withTitle := Book{Title: "Book"}
