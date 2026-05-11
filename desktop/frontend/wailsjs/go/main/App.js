@@ -9,3 +9,7 @@ export function AppVersion() {
 export function AvailableProviders() {
   return window['go']['main']['App']['AvailableProviders']();
 }
+
+export function InspectPath(arg1) {
+  return window['go']['main']['App']['InspectPath'](arg1);
+}

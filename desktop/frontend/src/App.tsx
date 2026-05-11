@@ -1,12 +1,35 @@
 import {useEffect, useMemo, useState} from 'react';
 import './App.css';
-import {AppVersion, AvailableProviders} from '../wailsjs/go/main/App';
+import {AppVersion, AvailableProviders, InspectPath} from '../wailsjs/go/main/App';
 
 type Screen = 'import' | 'metadata' | 'convert' | 'cache';
 
 type ProviderInfo = {
     Name: string;
     Enabled: boolean;
+};
+
+type InspectFileView = {
+    Path: string;
+    Name: string;
+    Duration: string;
+    Codec: string;
+    Bitrate: string;
+    Channels: number;
+    Chapters: number;
+    Tags: {
+        Title?: string;
+        Artist?: string;
+        Album?: string;
+        Genre?: string;
+        Date?: string;
+    };
+};
+
+type InspectView = {
+    Path: string;
+    Files: InspectFileView[];
+    TotalTime: string;
 };
 
 const screens: Array<{ id: Screen; label: string }> = [
@@ -20,6 +43,10 @@ function App() {
     const [activeScreen, setActiveScreen] = useState<Screen>('import');
     const [version, setVersion] = useState('');
     const [providers, setProviders] = useState<ProviderInfo[]>([]);
+    const [inputPath, setInputPath] = useState('');
+    const [inspectResult, setInspectResult] = useState<InspectView | null>(null);
+    const [inspectError, setInspectError] = useState('');
+    const [isInspecting, setIsInspecting] = useState(false);
 
     useEffect(() => {
         AppVersion().then(setVersion).catch(() => setVersion('unknown'));
@@ -30,6 +57,24 @@ function App() {
         () => providers.filter((provider) => provider.Enabled).map((provider) => provider.Name).join(', '),
         [providers],
     );
+
+    function inspectInput() {
+        const path = inputPath.trim();
+        if (!path) {
+            setInspectError('Input path is required.');
+            return;
+        }
+
+        setIsInspecting(true);
+        setInspectError('');
+        InspectPath(path)
+            .then((result) => setInspectResult(result as InspectView))
+            .catch((error) => {
+                setInspectResult(null);
+                setInspectError(String(error));
+            })
+            .finally(() => setIsInspecting(false));
+    }
 
     return (
         <main className="app-shell">
@@ -68,11 +113,21 @@ function App() {
                 {activeScreen === 'import' && (
                     <section className="panel">
                         <h3>Import source</h3>
-                        <div className="form-grid">
-                            <label>
-                                Input
-                                <input readOnly value="MP3 file or folder picker will be connected next" />
+                        <div className="inspect-row">
+                            <label className="path-field">
+                                Input path
+                                <input
+                                    onChange={(event) => setInputPath(event.target.value)}
+                                    placeholder="/path/to/book.mp3 or /path/to/book-folder"
+                                    value={inputPath}
+                                />
                             </label>
+                            <button className="primary-button" disabled={isInspecting} onClick={inspectInput} type="button">
+                                {isInspecting ? 'Inspecting' : 'Inspect'}
+                            </button>
+                        </div>
+
+                        <div className="form-grid">
                             <label>
                                 Metadata
                                 <input readOnly value="Optional bookbind.yaml" />
@@ -82,6 +137,36 @@ function App() {
                                 <input readOnly value="Optional JPG or PNG cover" />
                             </label>
                         </div>
+
+                        {inspectError && <div className="error-box">{inspectError}</div>}
+
+                        {inspectResult && (
+                            <div className="inspect-result">
+                                <div className="summary-row">
+                                    <span>{inspectResult.Path}</span>
+                                    <strong>{inspectResult.Files.length} files · {inspectResult.TotalTime || 'duration unknown'}</strong>
+                                </div>
+                                <div className="file-list">
+                                    {inspectResult.Files.map((file) => (
+                                        <div className="file-row" key={file.Path}>
+                                            <div>
+                                                <strong>{file.Name || file.Path}</strong>
+                                                <p>
+                                                    {[file.Duration, file.Codec, file.Bitrate, file.Channels ? `${file.Channels} ch` : '']
+                                                        .filter(Boolean)
+                                                        .join(' · ')}
+                                                </p>
+                                            </div>
+                                            <div className="tag-stack">
+                                                {file.Tags?.Title && <span>{file.Tags.Title}</span>}
+                                                {file.Tags?.Artist && <span>{file.Tags.Artist}</span>}
+                                                {file.Chapters > 0 && <span>{file.Chapters} chapters</span>}
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
                     </section>
                 )}
 

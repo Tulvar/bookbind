@@ -1330,12 +1330,13 @@ BuildM4B(ctx, request)
 Следующие PR:
 
 ```text
-1. Import screen: выбор input path, cover, metadata.yaml
-2. Metadata screen: providers, search, preview, select/export
-3. Convert screen: output path, dry-run, convert log
-4. Cache screen: list/clean
-5. CI smoke для frontend lint/build
-6. release workflow для desktop artifacts
+1. [x] Import screen: input path inspect, files, durations, embedded tags
+2. Import screen: file/folder picker, cover, metadata.yaml
+3. Metadata screen: providers, search, preview, select/export
+4. Convert screen: output path, dry-run, convert log
+5. Cache screen: list/clean
+6. CI smoke для frontend lint/build
+7. release workflow для desktop artifacts
 ```
 
 UI не должен напрямую знать про ffmpeg, scoring, merge-правила, парсинг EPUB
