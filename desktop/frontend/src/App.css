@@ -114,6 +114,18 @@
     grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
+.inspect-row {
+    align-items: end;
+    display: grid;
+    gap: 12px;
+    grid-template-columns: minmax(0, 1fr) 120px;
+    margin-bottom: 16px;
+}
+
+.path-field {
+    min-width: 0;
+}
+
 label {
     color: #445064;
     display: grid;
@@ -128,6 +140,83 @@ input {
     font: inherit;
     min-width: 0;
     padding: 10px 11px;
+}
+
+.primary-button {
+    background: #2454a6;
+    border: 0;
+    border-radius: 6px;
+    color: #ffffff;
+    cursor: pointer;
+    font: inherit;
+    font-weight: 700;
+    height: 41px;
+    padding: 0 16px;
+}
+
+.primary-button:disabled {
+    background: #94a3b8;
+    cursor: default;
+}
+
+.error-box {
+    background: #fff1f2;
+    border: 1px solid #fecdd3;
+    border-radius: 6px;
+    color: #b4233c;
+    margin-top: 16px;
+    padding: 12px 14px;
+}
+
+.inspect-result {
+    margin-top: 18px;
+}
+
+.file-list {
+    border: 1px solid #d8dee7;
+    border-radius: 6px;
+    overflow: hidden;
+}
+
+.file-row {
+    align-items: center;
+    display: grid;
+    gap: 16px;
+    grid-template-columns: minmax(0, 1fr) minmax(160px, 260px);
+    padding: 12px 14px;
+}
+
+.file-row + .file-row {
+    border-top: 1px solid #e5eaf0;
+}
+
+.file-row strong,
+.file-row p {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.file-row p {
+    color: #647184;
+    font-size: 13px;
+    margin: 4px 0 0;
+}
+
+.tag-stack {
+    color: #42526a;
+    display: grid;
+    font-size: 13px;
+    gap: 3px;
+    justify-items: end;
+    min-width: 0;
+}
+
+.tag-stack span {
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .summary-row {
@@ -183,5 +272,14 @@ input {
 
     .form-grid {
         grid-template-columns: 1fr;
+    }
+
+    .inspect-row,
+    .file-row {
+        grid-template-columns: 1fr;
+    }
+
+    .tag-stack {
+        justify-items: start;
     }
 }
