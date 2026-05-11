@@ -35,7 +35,7 @@ Search metadata candidates:
 go run ./cmd/bookbind search --title "Ночной дозор" --author "Лукьяненко"
 ```
 
-The first real metadata provider is Open Library.
+The first real metadata providers are Open Library and Google Books.
 
 Convert a single MP3 file or a directory with MP3 files:
 
