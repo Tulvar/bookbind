@@ -23,17 +23,30 @@ type ResolveMetadataResult struct {
 	Book       metadata.Book
 }
 
+type PreviewMetadataRequest struct {
+	Provider string
+	ID       string
+}
+
+type PreviewMetadataResult struct {
+	Candidate providers.Candidate
+	Book      metadata.Book
+}
+
+func (a *App) PreviewMetadata(ctx context.Context, req PreviewMetadataRequest) (PreviewMetadataResult, error) {
+	candidate, err := a.getMetadataCandidate(ctx, req.Provider, req.ID)
+	if err != nil {
+		return PreviewMetadataResult{}, err
+	}
+
+	return PreviewMetadataResult{
+		Candidate: candidate,
+		Book:      bookFromCandidate(candidate),
+	}, nil
+}
+
 func (a *App) ResolveMetadata(ctx context.Context, req ResolveMetadataRequest) (ResolveMetadataResult, error) {
-	if a.providers == nil {
-		return ResolveMetadataResult{}, fmt.Errorf("metadata providers are not configured")
-	}
-
-	providerName := strings.TrimSpace(req.Provider)
-	if canonicalName, err := CanonicalProviderName(providerName); err == nil {
-		providerName = canonicalName
-	}
-
-	candidate, err := a.providers.Get(ctx, providerName, strings.TrimSpace(req.ID))
+	candidate, err := a.getMetadataCandidate(ctx, req.Provider, req.ID)
 	if err != nil {
 		return ResolveMetadataResult{}, err
 	}
@@ -63,6 +76,23 @@ func (a *App) ResolveMetadata(ctx context.Context, req ResolveMetadataRequest) (
 		Candidate:  candidate,
 		Book:       book,
 	}, nil
+}
+
+func (a *App) getMetadataCandidate(ctx context.Context, provider, id string) (providers.Candidate, error) {
+	if a.providers == nil {
+		return providers.Candidate{}, fmt.Errorf("metadata providers are not configured")
+	}
+
+	providerName := strings.TrimSpace(provider)
+	if canonicalName, err := CanonicalProviderName(providerName); err == nil {
+		providerName = canonicalName
+	}
+
+	candidate, err := a.providers.Get(ctx, providerName, strings.TrimSpace(id))
+	if err != nil {
+		return providers.Candidate{}, err
+	}
+	return candidate, nil
 }
 
 func bookFromCandidate(candidate providers.Candidate) metadata.Book {
