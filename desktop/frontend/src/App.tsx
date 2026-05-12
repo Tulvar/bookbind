@@ -1,6 +1,14 @@
 import {useEffect, useMemo, useState} from 'react';
 import './App.css';
-import {AppVersion, AvailableProviders, InspectPath} from '../wailsjs/go/main/App';
+import {
+    AppVersion,
+    AvailableProviders,
+    InspectPath,
+    SelectAudioDirectory,
+    SelectAudioFile,
+    SelectCoverFile,
+    SelectMetadataFile,
+} from '../wailsjs/go/main/App';
 
 type Screen = 'import' | 'metadata' | 'convert' | 'cache';
 
@@ -44,6 +52,8 @@ function App() {
     const [version, setVersion] = useState('');
     const [providers, setProviders] = useState<ProviderInfo[]>([]);
     const [inputPath, setInputPath] = useState('');
+    const [metadataPath, setMetadataPath] = useState('');
+    const [coverPath, setCoverPath] = useState('');
     const [inspectResult, setInspectResult] = useState<InspectView | null>(null);
     const [inspectError, setInspectError] = useState('');
     const [isInspecting, setIsInspecting] = useState(false);
@@ -74,6 +84,17 @@ function App() {
                 setInspectError(String(error));
             })
             .finally(() => setIsInspecting(false));
+    }
+
+    function selectPath(action: () => Promise<string>, update: (path: string) => void) {
+        setInspectError('');
+        action()
+            .then((path) => {
+                if (path) {
+                    update(path);
+                }
+            })
+            .catch((error) => setInspectError(String(error)));
     }
 
     return (
@@ -122,6 +143,14 @@ function App() {
                                     value={inputPath}
                                 />
                             </label>
+                            <div className="button-group">
+                                <button className="secondary-button" onClick={() => selectPath(SelectAudioFile, setInputPath)} type="button">
+                                    File
+                                </button>
+                                <button className="secondary-button" onClick={() => selectPath(SelectAudioDirectory, setInputPath)} type="button">
+                                    Folder
+                                </button>
+                            </div>
                             <button className="primary-button" disabled={isInspecting} onClick={inspectInput} type="button">
                                 {isInspecting ? 'Inspecting' : 'Inspect'}
                             </button>
@@ -130,11 +159,29 @@ function App() {
                         <div className="form-grid">
                             <label>
                                 Metadata
-                                <input readOnly value="Optional bookbind.yaml" />
+                                <div className="field-with-button">
+                                    <input
+                                        onChange={(event) => setMetadataPath(event.target.value)}
+                                        placeholder="Optional bookbind.yaml"
+                                        value={metadataPath}
+                                    />
+                                    <button className="secondary-button" onClick={() => selectPath(SelectMetadataFile, setMetadataPath)} type="button">
+                                        Browse
+                                    </button>
+                                </div>
                             </label>
                             <label>
                                 Cover
-                                <input readOnly value="Optional JPG or PNG cover" />
+                                <div className="field-with-button">
+                                    <input
+                                        onChange={(event) => setCoverPath(event.target.value)}
+                                        placeholder="Optional JPG or PNG cover"
+                                        value={coverPath}
+                                    />
+                                    <button className="secondary-button" onClick={() => selectPath(SelectCoverFile, setCoverPath)} type="button">
+                                        Browse
+                                    </button>
+                                </div>
                             </label>
                         </div>
 
