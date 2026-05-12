@@ -168,7 +168,12 @@ input {
 }
 
 .field-with-button input {
-    flex: 1;
+    flex: 1 1 180px;
+}
+
+.button-group button,
+.field-with-button button {
+    flex: 0 0 auto;
 }
 
 .primary-button,
@@ -180,8 +185,10 @@ input {
     cursor: pointer;
     font: inherit;
     font-weight: 700;
-    height: 41px;
-    padding: 0 16px;
+    min-height: 41px;
+    min-width: 0;
+    overflow-wrap: anywhere;
+    padding: 0 14px;
 }
 
 .secondary-button {
@@ -286,9 +293,16 @@ input {
     border: 1px solid #d8dee7;
     border-radius: 6px;
     display: flex;
+    gap: 12px;
     justify-content: space-between;
     margin-bottom: 16px;
     padding: 12px 14px;
+}
+
+.summary-row span,
+.summary-row strong {
+    min-width: 0;
+    overflow-wrap: anywhere;
 }
 
 .table-shell {
@@ -327,7 +341,7 @@ input {
 .convert-grid {
     display: grid;
     gap: 14px;
-    grid-template-columns: minmax(0, 1.2fr) minmax(0, 1.2fr) minmax(180px, 0.7fr);
+    grid-template-columns: repeat(3, minmax(220px, 1fr));
 }
 
 .convert-grid.secondary {
@@ -336,14 +350,20 @@ input {
 }
 
 .convert-checkbox {
-    height: 41px;
+    min-height: 41px;
 }
 
 .action-row {
+    align-items: center;
     display: flex;
+    flex-wrap: wrap;
     gap: 10px;
     justify-content: flex-end;
     margin-top: 16px;
+}
+
+.action-row button {
+    min-width: 140px;
 }
 
 .progress-panel {
@@ -357,6 +377,7 @@ input {
     align-items: center;
     background: #f0f4f8;
     display: flex;
+    gap: 12px;
     justify-content: space-between;
     padding: 10px 12px;
 }
@@ -396,7 +417,7 @@ input {
     align-items: end;
     display: grid;
     gap: 12px;
-    grid-template-columns: minmax(0, 1fr) 120px 100px;
+    grid-template-columns: minmax(260px, 1fr) minmax(120px, auto) minmax(110px, auto);
     margin-bottom: 16px;
 }
 
@@ -432,7 +453,7 @@ input {
     align-items: end;
     display: grid;
     gap: 12px;
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 120px;
+    grid-template-columns: minmax(220px, 1fr) minmax(220px, 1fr) minmax(120px, auto);
     margin-bottom: 14px;
 }
 
@@ -454,6 +475,7 @@ input {
     font-size: 13px;
     gap: 8px;
     padding: 8px 10px;
+    overflow-wrap: anywhere;
 }
 
 .provider-toggle.disabled {
@@ -614,6 +636,12 @@ dd {
     .button-group,
     .field-with-button {
         flex-wrap: wrap;
+    }
+
+    .button-group button,
+    .field-with-button button,
+    .action-row button {
+        flex: 1 1 130px;
     }
 
     .tag-stack {
