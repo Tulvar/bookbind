@@ -9,6 +9,12 @@ export function AvailableProviders():Promise<Array<app.ProviderInfo>>;
 
 export function InspectPath(arg1:string):Promise<main.InspectView>;
 
+export function PreviewMetadata(arg1:string,arg2:string):Promise<main.MetadataPreviewView>;
+
+export function ResolveMetadata(arg1:string,arg2:string,arg3:string,arg4:boolean):Promise<main.MetadataResolveView>;
+
+export function SearchMetadata(arg1:string,arg2:string,arg3:Array<string>):Promise<main.MetadataSearchView>;
+
 export function SelectAudioDirectory():Promise<string>;
 
 export function SelectAudioFile():Promise<string>;

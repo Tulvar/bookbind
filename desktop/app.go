@@ -3,10 +3,13 @@ package main
 import (
 	"context"
 	"strconv"
+	"strings"
 	"time"
 
 	coreapp "github.com/Tulvar/bookbind/internal/app"
 	"github.com/Tulvar/bookbind/internal/audio"
+	"github.com/Tulvar/bookbind/internal/metadata"
+	"github.com/Tulvar/bookbind/internal/providers"
 	"github.com/Tulvar/bookbind/pkg/version"
 	wailsruntime "github.com/wailsapp/wails/v2/pkg/runtime"
 )
@@ -123,6 +126,137 @@ func (a *App) InspectPath(path string) (InspectView, error) {
 	}, nil
 }
 
+type MetadataSearchView struct {
+	Candidates []MetadataCandidateView
+}
+
+type MetadataCandidateView struct {
+	Provider    string
+	ID          string
+	Title       string
+	Authors     []string
+	Narrators   []string
+	Series      string
+	SeriesIndex string
+	Year        int
+	Duration    string
+	CoverURL    string
+	Confidence  string
+}
+
+type BookMetadataView struct {
+	Title         string
+	Subtitle      string
+	Authors       []string
+	Author        string
+	Narrators     []string
+	Narrator      string
+	Series        string
+	SeriesIndex   string
+	Language      string
+	Genre         string
+	Description   string
+	Publisher     string
+	PublishedYear int
+	Cover         string
+}
+
+type MetadataPreviewView struct {
+	Candidate MetadataCandidateView
+	Book      BookMetadataView
+}
+
+type MetadataResolveView struct {
+	OutputPath string
+	Candidate  MetadataCandidateView
+	Book       BookMetadataView
+}
+
+func (a *App) SearchMetadata(title, author string, providerNames []string) (MetadataSearchView, error) {
+	result, err := a.core.SearchMetadata(a.dialogContext(), coreapp.SearchRequest{
+		Title:     strings.TrimSpace(title),
+		Author:    strings.TrimSpace(author),
+		Providers: providerNames,
+	})
+	if err != nil {
+		return MetadataSearchView{}, err
+	}
+
+	candidates := make([]MetadataCandidateView, 0, len(result.Candidates))
+	for _, candidate := range result.Candidates {
+		candidates = append(candidates, candidateView(candidate))
+	}
+	return MetadataSearchView{Candidates: candidates}, nil
+}
+
+func (a *App) PreviewMetadata(provider, id string) (MetadataPreviewView, error) {
+	result, err := a.core.PreviewMetadata(a.dialogContext(), coreapp.PreviewMetadataRequest{
+		Provider: provider,
+		ID:       id,
+	})
+	if err != nil {
+		return MetadataPreviewView{}, err
+	}
+
+	return MetadataPreviewView{
+		Candidate: candidateView(result.Candidate),
+		Book:      bookView(result.Book),
+	}, nil
+}
+
+func (a *App) ResolveMetadata(provider, id, outputPath string, overwrite bool) (MetadataResolveView, error) {
+	result, err := a.core.ResolveMetadata(a.dialogContext(), coreapp.ResolveMetadataRequest{
+		Provider:   provider,
+		ID:         id,
+		OutputPath: outputPath,
+		Overwrite:  overwrite,
+	})
+	if err != nil {
+		return MetadataResolveView{}, err
+	}
+
+	return MetadataResolveView{
+		OutputPath: result.OutputPath,
+		Candidate:  candidateView(result.Candidate),
+		Book:       bookView(result.Book),
+	}, nil
+}
+
+func candidateView(candidate providers.Candidate) MetadataCandidateView {
+	return MetadataCandidateView{
+		Provider:    candidate.Provider,
+		ID:          candidate.ID,
+		Title:       candidate.Title,
+		Authors:     candidate.Authors,
+		Narrators:   candidate.Narrators,
+		Series:      candidate.Series,
+		SeriesIndex: candidate.SeriesIndex,
+		Year:        candidate.Year,
+		Duration:    formatDuration(candidate.Duration),
+		CoverURL:    candidate.CoverURL,
+		Confidence:  formatConfidence(candidate.Confidence),
+	}
+}
+
+func bookView(book metadata.Book) BookMetadataView {
+	return BookMetadataView{
+		Title:         book.Title,
+		Subtitle:      book.Subtitle,
+		Authors:       book.Authors,
+		Author:        book.Author,
+		Narrators:     book.Narrators,
+		Narrator:      book.Narrator,
+		Series:        book.Series,
+		SeriesIndex:   book.SeriesIndex,
+		Language:      book.Language,
+		Genre:         book.Genre,
+		Description:   book.Description,
+		Publisher:     book.Publisher,
+		PublishedYear: book.PublishedYear,
+		Cover:         book.Cover,
+	}
+}
+
 func formatDuration(duration time.Duration) string {
 	if duration <= 0 {
 		return ""
@@ -149,4 +283,11 @@ func formatBitrate(bitrate int) string {
 		return ""
 	}
 	return strconv.Itoa(bitrate/1000) + " kbps"
+}
+
+func formatConfidence(confidence float64) string {
+	if confidence <= 0 {
+		return ""
+	}
+	return strconv.Itoa(int(confidence*100+0.5)) + "%"
 }

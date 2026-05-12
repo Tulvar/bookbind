@@ -1332,7 +1332,7 @@ BuildM4B(ctx, request)
 ```text
 1. [x] Import screen: input path inspect, files, durations, embedded tags
 2. [x] Import screen: file/folder picker, cover, metadata.yaml
-3. Metadata screen: providers, search, preview, select/export
+3. [x] Metadata screen: providers, search, preview, select/export
 4. Convert screen: output path, dry-run, convert log
 5. Cache screen: list/clean
 6. CI smoke для frontend lint/build
