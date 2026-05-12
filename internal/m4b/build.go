@@ -1,8 +1,10 @@
 package m4b
 
 import (
+	"bytes"
 	"context"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -23,8 +25,16 @@ type ExecRunner struct{}
 func (ExecRunner) Run(ctx context.Context, name string, args ...string) error {
 	cmd := exec.CommandContext(ctx, name, args...)
 	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	return cmd.Run()
+	var stderr bytes.Buffer
+	cmd.Stderr = io.MultiWriter(os.Stderr, &stderr)
+	if err := cmd.Run(); err != nil {
+		output := strings.TrimSpace(stderr.String())
+		if output != "" {
+			return fmt.Errorf("%w: %s", err, output)
+		}
+		return err
+	}
+	return nil
 }
 
 type Builder struct {

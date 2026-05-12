@@ -141,7 +141,7 @@ function App() {
     const [isSearchingMetadata, setIsSearchingMetadata] = useState(false);
     const [isPreviewingMetadata, setIsPreviewingMetadata] = useState(false);
     const [isSavingMetadata, setIsSavingMetadata] = useState(false);
-    const [outputPath, setOutputPath] = useState('book.m4b');
+    const [outputPath, setOutputPath] = useState('');
     const [chapterEvery, setChapterEvery] = useState('');
     const [overwriteOutput, setOverwriteOutput] = useState(false);
     const [convertResult, setConvertResult] = useState<ConvertView | null>(null);
@@ -583,7 +583,7 @@ function App() {
                                 <div className="field-with-button">
                                     <input
                                         onChange={(event) => setOutputPath(event.target.value)}
-                                        placeholder="book.m4b"
+                                        placeholder="Optional, defaults next to input"
                                         value={outputPath}
                                     />
                                     <button className="secondary-button" onClick={() => selectPath(SelectOutputFile, setOutputPath)} type="button">
