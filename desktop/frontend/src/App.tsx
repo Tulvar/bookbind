@@ -3,6 +3,7 @@ import './App.css';
 import {
     AppVersion,
     AvailableProviders,
+    ConvertAudio,
     InspectPath,
     PreviewMetadata,
     ResolveMetadata,
@@ -11,6 +12,7 @@ import {
     SelectAudioFile,
     SelectCoverFile,
     SelectMetadataFile,
+    SelectOutputFile,
 } from '../wailsjs/go/main/App';
 
 type Screen = 'import' | 'metadata' | 'convert' | 'cache';
@@ -79,6 +81,20 @@ type MetadataPreviewView = {
     Book: BookMetadataView;
 };
 
+type ConvertView = {
+    InputPath: string;
+    Files: InspectFileView[];
+    TotalTime: string;
+    MetadataPath: string;
+    Title: string;
+    CoverPath: string;
+    ChapterEvery: string;
+    OutputPath: string;
+    DryRun: boolean;
+    Command: string[];
+    Status: string;
+};
+
 const screens: Array<{ id: Screen; label: string }> = [
     {id: 'import', label: 'Import'},
     {id: 'metadata', label: 'Metadata'},
@@ -109,6 +125,12 @@ function App() {
     const [isSearchingMetadata, setIsSearchingMetadata] = useState(false);
     const [isPreviewingMetadata, setIsPreviewingMetadata] = useState(false);
     const [isSavingMetadata, setIsSavingMetadata] = useState(false);
+    const [outputPath, setOutputPath] = useState('book.m4b');
+    const [chapterEvery, setChapterEvery] = useState('');
+    const [overwriteOutput, setOverwriteOutput] = useState(false);
+    const [convertResult, setConvertResult] = useState<ConvertView | null>(null);
+    const [convertError, setConvertError] = useState('');
+    const [isConverting, setIsConverting] = useState(false);
 
     useEffect(() => {
         AppVersion().then(setVersion).catch(() => setVersion('unknown'));
@@ -143,6 +165,7 @@ function App() {
 
     function selectPath(action: () => Promise<string>, update: (path: string) => void) {
         setInspectError('');
+        setConvertError('');
         action()
             .then((path) => {
                 if (path) {
@@ -211,6 +234,36 @@ function App() {
             .catch((error) => setMetadataError(String(error)))
             .finally(() => setIsSavingMetadata(false));
     }
+
+    function convertAudio(dryRun: boolean) {
+        if (!inputPath.trim()) {
+            setConvertError('Input path is required.');
+            return;
+        }
+
+        setIsConverting(true);
+        setConvertError('');
+        setConvertResult(null);
+        ConvertAudio(inputPath, outputPath, metadataPath, coverPath, chapterEvery, dryRun, overwriteOutput)
+            .then((result) => setConvertResult(result as ConvertView))
+            .catch((error) => setConvertError(String(error)))
+            .finally(() => setIsConverting(false));
+    }
+
+    const convertLog = convertResult
+        ? [
+            `Input: ${convertResult.InputPath}`,
+            `Files: ${convertResult.Files?.length || 0}${convertResult.TotalTime ? ` · ${convertResult.TotalTime}` : ''}`,
+            convertResult.MetadataPath ? `Metadata: ${convertResult.MetadataPath}` : '',
+            convertResult.Title ? `Title: ${convertResult.Title}` : '',
+            convertResult.CoverPath ? `Cover: ${convertResult.CoverPath}` : '',
+            convertResult.ChapterEvery ? `Chapter every: ${convertResult.ChapterEvery}` : '',
+            `Output: ${convertResult.OutputPath}`,
+            convertResult.DryRun ? 'Mode: dry-run' : 'Mode: convert',
+            convertResult.Command?.length ? `Command: ${convertResult.Command.join(' ')}` : '',
+            `Status: ${convertResult.Status}`,
+        ].filter(Boolean).join('\n')
+        : 'Conversion plan and progress events will appear here.';
 
     return (
         <main className="app-shell">
@@ -467,17 +520,73 @@ function App() {
                 {activeScreen === 'convert' && (
                     <section className="panel">
                         <h3>Convert</h3>
-                        <div className="form-grid">
+                        <div className="convert-grid">
+                            <label>
+                                Input
+                                <input
+                                    onChange={(event) => setInputPath(event.target.value)}
+                                    placeholder="/path/to/book.mp3 or /path/to/book-folder"
+                                    value={inputPath}
+                                />
+                            </label>
                             <label>
                                 Output
-                                <input readOnly value="book.m4b" />
+                                <div className="field-with-button">
+                                    <input
+                                        onChange={(event) => setOutputPath(event.target.value)}
+                                        placeholder="book.m4b"
+                                        value={outputPath}
+                                    />
+                                    <button className="secondary-button" onClick={() => selectPath(SelectOutputFile, setOutputPath)} type="button">
+                                        Browse
+                                    </button>
+                                </div>
                             </label>
                             <label>
-                                Mode
-                                <input readOnly value="Dry-run preview first" />
+                                Chapter interval
+                                <input
+                                    onChange={(event) => setChapterEvery(event.target.value)}
+                                    placeholder="Optional, for example 10m"
+                                    value={chapterEvery}
+                                />
                             </label>
                         </div>
-                        <div className="log-box">Conversion plan and progress events will appear here.</div>
+                        <div className="convert-grid secondary">
+                            <label>
+                                Metadata
+                                <input
+                                    onChange={(event) => setMetadataPath(event.target.value)}
+                                    placeholder="Optional bookbind.yaml"
+                                    value={metadataPath}
+                                />
+                            </label>
+                            <label>
+                                Cover
+                                <input
+                                    onChange={(event) => setCoverPath(event.target.value)}
+                                    placeholder="Optional JPG or PNG cover"
+                                    value={coverPath}
+                                />
+                            </label>
+                            <label className="checkbox-line convert-checkbox">
+                                <input
+                                    checked={overwriteOutput}
+                                    onChange={(event) => setOverwriteOutput(event.target.checked)}
+                                    type="checkbox"
+                                />
+                                Overwrite output
+                            </label>
+                        </div>
+                        <div className="action-row">
+                            <button className="secondary-button" disabled={isConverting} onClick={() => convertAudio(true)} type="button">
+                                {isConverting ? 'Working' : 'Dry run'}
+                            </button>
+                            <button className="primary-button" disabled={isConverting} onClick={() => convertAudio(false)} type="button">
+                                {isConverting ? 'Working' : 'Convert'}
+                            </button>
+                        </div>
+                        {convertError && <div className="error-box">{convertError}</div>}
+                        <pre className="log-box">{convertLog}</pre>
                     </section>
                 )}
 

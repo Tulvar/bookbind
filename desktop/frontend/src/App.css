@@ -182,6 +182,11 @@ input {
     cursor: default;
 }
 
+.secondary-button:disabled {
+    color: #94a3b8;
+    cursor: default;
+}
+
 .error-box {
     background: #fff1f2;
     border: 1px solid #fecdd3;
@@ -290,6 +295,30 @@ input {
     font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
     margin-top: 16px;
     min-height: 120px;
+    overflow: auto;
+    white-space: pre-wrap;
+}
+
+.convert-grid {
+    display: grid;
+    gap: 14px;
+    grid-template-columns: minmax(0, 1.2fr) minmax(0, 1.2fr) minmax(180px, 0.7fr);
+}
+
+.convert-grid.secondary {
+    align-items: end;
+    margin-top: 14px;
+}
+
+.convert-checkbox {
+    height: 41px;
+}
+
+.action-row {
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+    margin-top: 16px;
 }
 
 .metadata-search {
@@ -464,6 +493,7 @@ dd {
 
     .inspect-row,
     .file-row,
+    .convert-grid,
     .metadata-search,
     .metadata-layout,
     .metadata-table-header,

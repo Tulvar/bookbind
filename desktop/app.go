@@ -73,6 +73,17 @@ func (a *App) SelectCoverFile() (string, error) {
 	})
 }
 
+func (a *App) SelectOutputFile() (string, error) {
+	return wailsruntime.SaveFileDialog(a.dialogContext(), wailsruntime.SaveDialogOptions{
+		Title:           "Select output M4B",
+		DefaultFilename: "book.m4b",
+		Filters: []wailsruntime.FileFilter{
+			{DisplayName: "M4B audiobook", Pattern: "*.m4b"},
+			{DisplayName: "All files", Pattern: "*.*"},
+		},
+	})
+}
+
 func (a *App) dialogContext() context.Context {
 	if a.ctx != nil {
 		return a.ctx
@@ -219,6 +230,69 @@ func (a *App) ResolveMetadata(provider, id, outputPath string, overwrite bool) (
 		OutputPath: result.OutputPath,
 		Candidate:  candidateView(result.Candidate),
 		Book:       bookView(result.Book),
+	}, nil
+}
+
+type ConvertView struct {
+	InputPath    string
+	Files        []InspectFileView
+	TotalTime    string
+	MetadataPath string
+	Title        string
+	CoverPath    string
+	ChapterEvery string
+	OutputPath   string
+	DryRun       bool
+	Command      []string
+	Status       string
+}
+
+func (a *App) ConvertAudio(inputPath, outputPath, metadataPath, coverPath, chapterEvery string, dryRun, overwrite bool) (ConvertView, error) {
+	result, err := a.core.Convert(a.dialogContext(), coreapp.ConvertRequest{
+		InputPath:    strings.TrimSpace(inputPath),
+		OutputPath:   strings.TrimSpace(outputPath),
+		MetadataPath: strings.TrimSpace(metadataPath),
+		CoverPath:    strings.TrimSpace(coverPath),
+		ChapterEvery: strings.TrimSpace(chapterEvery),
+		DryRun:       dryRun,
+		Overwrite:    overwrite,
+	})
+	if err != nil {
+		return ConvertView{}, err
+	}
+
+	files := make([]InspectFileView, 0, len(result.Input.Files))
+	var total time.Duration
+	for _, file := range result.Input.Files {
+		total += file.Duration
+		files = append(files, InspectFileView{
+			Path:     file.Path,
+			Name:     file.Name,
+			Duration: formatDuration(file.Duration),
+			Codec:    file.Codec,
+			Bitrate:  formatBitrate(file.Bitrate),
+			Channels: file.Channels,
+			Tags:     file.Tags,
+			Chapters: len(file.Chapters),
+		})
+	}
+
+	status := "done"
+	if result.DryRun {
+		status = "planned"
+	}
+	return ConvertView{
+		InputPath:    result.Input.Path,
+		Files:        files,
+		TotalTime:    formatDuration(total),
+		MetadataPath: result.MetadataPath,
+		Title:        result.Metadata.Title,
+		CoverPath:    result.CoverPath,
+		ChapterEvery: result.ChapterEvery,
+		OutputPath:   result.OutputPath,
+		DryRun:       result.DryRun,
+		Command:      result.Command,
+		Status:       status,
 	}, nil
 }
 

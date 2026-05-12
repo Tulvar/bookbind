@@ -10,6 +10,10 @@ export function AvailableProviders() {
   return window['go']['main']['App']['AvailableProviders']();
 }
 
+export function ConvertAudio(arg1, arg2, arg3, arg4, arg5, arg6, arg7) {
+  return window['go']['main']['App']['ConvertAudio'](arg1, arg2, arg3, arg4, arg5, arg6, arg7);
+}
+
 export function InspectPath(arg1) {
   return window['go']['main']['App']['InspectPath'](arg1);
 }
@@ -40,4 +44,8 @@ export function SelectCoverFile() {
 
 export function SelectMetadataFile() {
   return window['go']['main']['App']['SelectMetadataFile']();
+}
+
+export function SelectOutputFile() {
+  return window['go']['main']['App']['SelectOutputFile']();
 }
