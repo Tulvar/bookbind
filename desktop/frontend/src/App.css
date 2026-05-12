@@ -48,6 +48,23 @@
     gap: 6px;
 }
 
+.language-picker {
+    border-top: 1px solid #e5eaf0;
+    margin-top: 22px;
+    padding-top: 18px;
+}
+
+select {
+    appearance: none;
+    background: #ffffff;
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+    color: #1d2733;
+    font: inherit;
+    padding: 9px 10px;
+    width: 100%;
+}
+
 .nav-item {
     background: transparent;
     border: 0;
@@ -327,6 +344,52 @@ input {
     gap: 10px;
     justify-content: flex-end;
     margin-top: 16px;
+}
+
+.progress-panel {
+    border: 1px solid #d8dee7;
+    border-radius: 6px;
+    margin-top: 16px;
+    overflow: hidden;
+}
+
+.progress-header {
+    align-items: center;
+    background: #f0f4f8;
+    display: flex;
+    justify-content: space-between;
+    padding: 10px 12px;
+}
+
+.progress-header span {
+    color: #647184;
+    font-size: 13px;
+}
+
+.progress-track {
+    background: #e5eaf0;
+    height: 8px;
+    overflow: hidden;
+}
+
+.progress-track span {
+    background: #2454a6;
+    display: block;
+    height: 100%;
+    min-width: 8%;
+    transition: width 200ms ease;
+}
+
+.progress-log {
+    background: #111827;
+    color: #d1d5db;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-size: 12px;
+    margin: 0;
+    max-height: 260px;
+    overflow: auto;
+    padding: 12px;
+    white-space: pre-wrap;
 }
 
 .cache-toolbar {

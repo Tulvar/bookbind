@@ -20,6 +20,11 @@ type Runner interface {
 	Run(ctx context.Context, name string, args ...string) error
 }
 
+type ProgressRunner interface {
+	Runner
+	SetProgressWriter(writer io.Writer)
+}
+
 type ExecRunner struct{}
 
 func (ExecRunner) Run(ctx context.Context, name string, args ...string) error {
@@ -27,6 +32,29 @@ func (ExecRunner) Run(ctx context.Context, name string, args ...string) error {
 	cmd.Stdout = os.Stdout
 	var stderr bytes.Buffer
 	cmd.Stderr = io.MultiWriter(os.Stderr, &stderr)
+	if err := cmd.Run(); err != nil {
+		output := strings.TrimSpace(stderr.String())
+		if output != "" {
+			return fmt.Errorf("%w: %s", err, output)
+		}
+		return err
+	}
+	return nil
+}
+
+type ReportingRunner struct {
+	Writer io.Writer
+}
+
+func (r ReportingRunner) Run(ctx context.Context, name string, args ...string) error {
+	writer := r.Writer
+	if writer == nil {
+		writer = io.Discard
+	}
+	cmd := exec.CommandContext(ctx, name, args...)
+	cmd.Stdout = io.MultiWriter(os.Stdout, writer)
+	var stderr bytes.Buffer
+	cmd.Stderr = io.MultiWriter(os.Stderr, writer, &stderr)
 	if err := cmd.Run(); err != nil {
 		output := strings.TrimSpace(stderr.String())
 		if output != "" {
@@ -53,13 +81,14 @@ func NewBuilder(ffmpegPath string) *Builder {
 }
 
 type BuildRequest struct {
-	Input        audio.Input
-	Metadata     metadata.Book
-	CoverPath    string
-	OutputPath   string
-	Overwrite    bool
-	DryRun       bool
-	ChapterEvery time.Duration
+	Input          audio.Input
+	Metadata       metadata.Book
+	CoverPath      string
+	OutputPath     string
+	Overwrite      bool
+	DryRun         bool
+	ChapterEvery   time.Duration
+	ProgressWriter io.Writer
 }
 
 type BuildResult struct {
@@ -90,6 +119,9 @@ func (b *Builder) Build(ctx context.Context, req BuildRequest) (BuildResult, err
 
 	if b.Runner == nil {
 		return BuildResult{}, fmt.Errorf("ffmpeg runner is not configured")
+	}
+	if runner, ok := b.Runner.(ProgressRunner); ok {
+		runner.SetProgressWriter(req.ProgressWriter)
 	}
 	if err := b.Runner.Run(ctx, command[0], command[1:]...); err != nil {
 		return BuildResult{}, fmt.Errorf("ffmpeg conversion failed: %w", err)

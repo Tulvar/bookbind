@@ -1,5 +1,23 @@
 # Release Notes
 
+## v0.4.2
+
+`v0.4.2` improves the desktop conversion flow after the first release.
+
+### Added
+
+- Live ffmpeg conversion progress in the desktop Convert screen.
+- A conversion log panel that shows ffmpeg output while conversion is running.
+- English/Russian language selector for the desktop UI.
+
+### Fixed
+
+- Google Books remote cover URLs in metadata no longer break conversion by being
+  treated as local file paths.
+- Desktop conversion errors include ffmpeg stderr instead of only an exit code.
+- Empty desktop output path now defaults next to the input instead of using a
+  confusing relative `book.m4b`.
+
 ## v0.4.0
 
 `v0.4.0` introduces the first desktop release on top of the existing Go core.

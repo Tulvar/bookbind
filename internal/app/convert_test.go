@@ -156,6 +156,33 @@ cover: "cover.jpg"
 	}
 }
 
+func TestConvertIgnoresRemoteMetadataCover(t *testing.T) {
+	dir := t.TempDir()
+	inputPath := filepath.Join(dir, "book.mp3")
+	metadataPath := filepath.Join(dir, "bookbind.yaml")
+	if err := os.WriteFile(inputPath, []byte("test"), 0o644); err != nil {
+		t.Fatalf("write input file: %v", err)
+	}
+	if err := os.WriteFile(metadataPath, []byte(`title: "Book"
+cover: "https://books.google.com/books/content?id=book&img=1"
+`), 0o644); err != nil {
+		t.Fatalf("write metadata file: %v", err)
+	}
+
+	result, err := newTestApp().Convert(context.Background(), ConvertRequest{
+		InputPath:    inputPath,
+		MetadataPath: metadataPath,
+		DryRun:       true,
+	})
+	if err != nil {
+		t.Fatalf("Convert() error = %v", err)
+	}
+
+	if result.CoverPath != "" {
+		t.Fatalf("CoverPath = %q, want empty", result.CoverPath)
+	}
+}
+
 func TestConvertRejectsUnsupportedCoverExtension(t *testing.T) {
 	dir := t.TempDir()
 	inputPath := filepath.Join(dir, "book.mp3")
