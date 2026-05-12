@@ -9,6 +9,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	coreapp "github.com/Tulvar/bookbind/internal/app"
@@ -21,8 +22,11 @@ import (
 )
 
 type App struct {
-	ctx  context.Context
-	core *coreapp.App
+	ctx           context.Context
+	core          *coreapp.App
+	convertMu     sync.Mutex
+	convertCancel context.CancelFunc
+	convertID     int
 }
 
 func NewApp() *App {
@@ -342,14 +346,55 @@ type ConvertProgressEvent struct {
 }
 
 func (a *App) ConvertAudio(inputPath, outputPath, metadataPath, coverPath, chapterEvery string, dryRun, overwrite bool) (ConvertView, error) {
+	return a.convertAudio(inputPath, outputPath, metadataPath, BookMetadataView{}, coverPath, chapterEvery, dryRun, overwrite)
+}
+
+func (a *App) ConvertAudioWithMetadata(inputPath, outputPath string, metadata BookMetadataView, coverPath, chapterEvery string, dryRun, overwrite bool) (ConvertView, error) {
+	return a.convertAudio(inputPath, outputPath, "", metadata, coverPath, chapterEvery, dryRun, overwrite)
+}
+
+func (a *App) CancelConvert() bool {
+	a.convertMu.Lock()
+	defer a.convertMu.Unlock()
+	if a.convertCancel == nil {
+		return false
+	}
+	a.convertCancel()
+	return true
+}
+
+func (a *App) convertAudio(inputPath, outputPath, metadataPath string, inlineMetadata BookMetadataView, coverPath, chapterEvery string, dryRun, overwrite bool) (ConvertView, error) {
+	ctx := a.dialogContext()
+	var cancel context.CancelFunc
+	convertID := 0
+	if !dryRun {
+		ctx, cancel = context.WithCancel(ctx)
+		a.convertMu.Lock()
+		if a.convertCancel != nil {
+			a.convertCancel()
+		}
+		a.convertID++
+		convertID = a.convertID
+		a.convertCancel = cancel
+		a.convertMu.Unlock()
+		defer func() {
+			a.convertMu.Lock()
+			if a.convertID == convertID {
+				a.convertCancel = nil
+			}
+			a.convertMu.Unlock()
+			cancel()
+		}()
+	}
+
 	var progress *convertProgressWriter
 	if !dryRun {
-		progress = newConvertProgressWriter(a.dialogContext(), 0)
-		if inspect, inspectErr := a.core.InspectInput(a.dialogContext(), coreapp.InspectRequest{InputPath: strings.TrimSpace(inputPath)}); inspectErr == nil {
+		progress = newConvertProgressWriter(ctx, 0)
+		if inspect, inspectErr := a.core.InspectInput(ctx, coreapp.InspectRequest{InputPath: strings.TrimSpace(inputPath)}); inspectErr == nil {
 			for _, file := range inspect.Input.Files {
 				progress.total += file.Duration
 			}
-			wailsruntime.EventsEmit(a.dialogContext(), "convert:progress", ConvertProgressEvent{
+			wailsruntime.EventsEmit(ctx, "convert:progress", ConvertProgressEvent{
 				Phase:   "converting",
 				Line:    "ffmpeg started",
 				Percent: 0,
@@ -357,10 +402,11 @@ func (a *App) ConvertAudio(inputPath, outputPath, metadataPath, coverPath, chapt
 			})
 		}
 	}
-	result, err := a.core.Convert(a.dialogContext(), coreapp.ConvertRequest{
+	result, err := a.core.Convert(ctx, coreapp.ConvertRequest{
 		InputPath:    strings.TrimSpace(inputPath),
 		OutputPath:   strings.TrimSpace(outputPath),
 		MetadataPath: strings.TrimSpace(metadataPath),
+		Metadata:     bookFromView(inlineMetadata),
 		CoverPath:    strings.TrimSpace(coverPath),
 		ChapterEvery: strings.TrimSpace(chapterEvery),
 		DryRun:       dryRun,
@@ -496,6 +542,25 @@ func candidateView(candidate providers.Candidate) MetadataCandidateView {
 
 func bookView(book metadata.Book) BookMetadataView {
 	return BookMetadataView{
+		Title:         book.Title,
+		Subtitle:      book.Subtitle,
+		Authors:       book.Authors,
+		Author:        book.Author,
+		Narrators:     book.Narrators,
+		Narrator:      book.Narrator,
+		Series:        book.Series,
+		SeriesIndex:   book.SeriesIndex,
+		Language:      book.Language,
+		Genre:         book.Genre,
+		Description:   book.Description,
+		Publisher:     book.Publisher,
+		PublishedYear: book.PublishedYear,
+		Cover:         book.Cover,
+	}
+}
+
+func bookFromView(book BookMetadataView) metadata.Book {
+	return metadata.Book{
 		Title:         book.Title,
 		Subtitle:      book.Subtitle,
 		Authors:       book.Authors,

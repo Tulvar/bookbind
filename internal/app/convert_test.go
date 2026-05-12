@@ -9,6 +9,7 @@ import (
 
 	"github.com/Tulvar/bookbind/internal/audio"
 	"github.com/Tulvar/bookbind/internal/m4b"
+	"github.com/Tulvar/bookbind/internal/metadata"
 )
 
 func TestConvertPlansDefaultOutput(t *testing.T) {
@@ -97,6 +98,27 @@ author: "Sergey Lukyanenko"
 	}
 	if got := result.Metadata.NormalizedAuthors(); len(got) != 1 || got[0] != "Sergey Lukyanenko" {
 		t.Fatalf("authors = %#v", got)
+	}
+}
+
+func TestConvertUsesInlineMetadata(t *testing.T) {
+	dir := t.TempDir()
+	inputPath := filepath.Join(dir, "book.mp3")
+	if err := os.WriteFile(inputPath, []byte("test"), 0o644); err != nil {
+		t.Fatalf("write input file: %v", err)
+	}
+
+	result, err := newTestApp().Convert(context.Background(), ConvertRequest{
+		InputPath: inputPath,
+		Metadata:  metadata.Book{Title: "Inline Book"},
+		DryRun:    true,
+	})
+	if err != nil {
+		t.Fatalf("Convert() error = %v", err)
+	}
+
+	if got, want := result.Metadata.Title, "Inline Book"; got != want {
+		t.Fatalf("Metadata.Title = %q, want %q", got, want)
 	}
 }
 

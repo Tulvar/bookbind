@@ -113,6 +113,60 @@ select {
     padding: 7px 12px;
 }
 
+.modal-backdrop {
+    align-items: center;
+    background: rgb(15 23 42 / 42%);
+    display: flex;
+    inset: 0;
+    justify-content: center;
+    padding: 24px;
+    position: fixed;
+    z-index: 20;
+}
+
+.modal {
+    background: #ffffff;
+    border: 1px solid #d8dee7;
+    border-radius: 8px;
+    box-shadow: 0 24px 60px rgb(15 23 42 / 24%);
+    display: grid;
+    gap: 14px;
+    max-width: 520px;
+    padding: 22px;
+    width: min(100%, 520px);
+}
+
+.modal h3,
+.modal p {
+    margin: 0;
+}
+
+.modal p {
+    color: #4b5b70;
+    line-height: 1.5;
+}
+
+.modal-summary {
+    background: #f8fafc;
+    border: 1px solid #e5eaf0;
+    border-radius: 6px;
+    display: grid;
+    gap: 5px;
+    padding: 12px;
+}
+
+.modal-summary span {
+    color: #647184;
+    overflow-wrap: anywhere;
+}
+
+.modal-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    justify-content: flex-end;
+}
+
 .panel {
     background: #ffffff;
     border: 1px solid #d8dee7;
@@ -321,21 +375,9 @@ input {
     padding: 10px 12px;
 }
 
-.table-empty,
-.log-box {
+.table-empty {
     color: #647184;
     padding: 18px 12px;
-}
-
-.log-box {
-    background: #111827;
-    border-radius: 6px;
-    color: #d1d5db;
-    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-    margin-top: 16px;
-    min-height: 120px;
-    overflow: auto;
-    white-space: pre-wrap;
 }
 
 .convert-grid {
@@ -364,6 +406,39 @@ input {
 
 .action-row button {
     min-width: 140px;
+}
+
+.danger-secondary {
+    background: #fff1f2;
+    color: #b4233c;
+}
+
+.danger-secondary:hover {
+    background: #ffe4e6;
+}
+
+.selected-metadata {
+    align-items: center;
+    background: #ecfdf5;
+    border: 1px solid #a7f3d0;
+    border-radius: 6px;
+    color: #047857;
+    display: flex;
+    gap: 12px;
+    justify-content: space-between;
+    margin-top: 16px;
+    padding: 12px 14px;
+}
+
+.selected-metadata div {
+    display: grid;
+    gap: 3px;
+    min-width: 0;
+}
+
+.selected-metadata span {
+    color: #166534;
+    overflow-wrap: anywhere;
 }
 
 .progress-panel {
@@ -408,6 +483,7 @@ input {
     font-size: 12px;
     margin: 0;
     max-height: 260px;
+    min-height: 120px;
     overflow: auto;
     padding: 12px;
     white-space: pre-wrap;
@@ -642,6 +718,12 @@ dd {
     .field-with-button button,
     .action-row button {
         flex: 1 1 130px;
+    }
+
+    .modal-actions,
+    .selected-metadata {
+        align-items: stretch;
+        flex-direction: column;
     }
 
     .tag-stack {

@@ -18,6 +18,7 @@ type ConvertRequest struct {
 	InputPath    string
 	OutputPath   string
 	MetadataPath string
+	Metadata     metadata.Book
 	CoverPath    string
 	ChapterEvery string
 	DryRun       bool
@@ -57,9 +58,13 @@ func (a *App) Convert(ctx context.Context, req ConvertRequest) (ConvertResult, e
 		return ConvertResult{}, fmt.Errorf("m4b builder is not configured")
 	}
 
-	book, err := loadMetadata(req.MetadataPath)
-	if err != nil {
-		return ConvertResult{}, err
+	book := req.Metadata
+	if book.Empty() {
+		loaded, err := loadMetadata(req.MetadataPath)
+		if err != nil {
+			return ConvertResult{}, err
+		}
+		book = loaded
 	}
 	coverPath, err := resolveCoverPath(req.CoverPath, req.MetadataPath, book)
 	if err != nil {

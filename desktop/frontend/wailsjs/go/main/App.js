@@ -10,12 +10,20 @@ export function AvailableProviders() {
   return window['go']['main']['App']['AvailableProviders']();
 }
 
+export function CancelConvert() {
+  return window['go']['main']['App']['CancelConvert']();
+}
+
 export function CleanCache(arg1) {
   return window['go']['main']['App']['CleanCache'](arg1);
 }
 
 export function ConvertAudio(arg1, arg2, arg3, arg4, arg5, arg6, arg7) {
   return window['go']['main']['App']['ConvertAudio'](arg1, arg2, arg3, arg4, arg5, arg6, arg7);
+}
+
+export function ConvertAudioWithMetadata(arg1, arg2, arg3, arg4, arg5, arg6, arg7) {
+  return window['go']['main']['App']['ConvertAudioWithMetadata'](arg1, arg2, arg3, arg4, arg5, arg6, arg7);
 }
 
 export function InspectPath(arg1) {

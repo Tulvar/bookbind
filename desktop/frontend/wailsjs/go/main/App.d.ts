@@ -7,9 +7,13 @@ export function AppVersion():Promise<string>;
 
 export function AvailableProviders():Promise<Array<app.ProviderInfo>>;
 
+export function CancelConvert():Promise<boolean>;
+
 export function CleanCache(arg1:string):Promise<main.CacheCleanView>;
 
 export function ConvertAudio(arg1:string,arg2:string,arg3:string,arg4:string,arg5:string,arg6:boolean,arg7:boolean):Promise<main.ConvertView>;
+
+export function ConvertAudioWithMetadata(arg1:string,arg2:string,arg3:main.BookMetadataView,arg4:string,arg5:string,arg6:boolean,arg7:boolean):Promise<main.ConvertView>;
 
 export function InspectPath(arg1:string):Promise<main.InspectView>;
 

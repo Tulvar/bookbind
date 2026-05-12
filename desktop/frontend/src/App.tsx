@@ -3,8 +3,10 @@ import './App.css';
 import {
     AppVersion,
     AvailableProviders,
+    CancelConvert,
     CleanCache,
     ConvertAudio,
+    ConvertAudioWithMetadata,
     InspectPath,
     ListCache,
     PreviewMetadata,
@@ -178,6 +180,14 @@ const translations = {
         overwriteExistingFile: 'Overwrite existing file',
         saving: 'Saving',
         saveMetadata: 'Save metadata',
+        saveYamlInstead: 'Save YAML instead',
+        close: 'Close',
+        clearMetadata: 'Clear metadata',
+        useForConvert: 'Use for conversion',
+        metadataReadyTitle: 'Metadata ready',
+        metadataReadyText: 'Use this metadata for conversion without writing bookbind.yaml, or save it as YAML.',
+        usingInlineMetadata: 'Using selected metadata for conversion',
+        selectedMetadata: 'Selected metadata',
         selectCandidatePreview: 'Select a candidate to preview metadata.',
         input: 'Input',
         outputPlaceholder: 'Optional, defaults next to input',
@@ -196,6 +206,9 @@ const translations = {
         conversionPlanPlaceholder: 'Conversion plan and progress events will appear here.',
         preparingConversion: 'Preparing conversion...',
         conversionFinished: 'Conversion finished.',
+        cancellationRequested: 'Cancellation requested...',
+        cancel: 'Cancel',
+        confirmCancel: 'Cancel current conversion?',
         mode: 'Mode',
         command: 'Command',
         status: 'Status',
@@ -271,6 +284,14 @@ const translations = {
         overwriteExistingFile: 'Перезаписать существующий файл',
         saving: 'Сохраняем',
         saveMetadata: 'Сохранить метаданные',
+        saveYamlInstead: 'Сохранить YAML',
+        close: 'Закрыть',
+        clearMetadata: 'Сбросить метаданные',
+        useForConvert: 'Использовать в конвертации',
+        metadataReadyTitle: 'Метаданные готовы',
+        metadataReadyText: 'Можно использовать эти метаданные в конвертации без сохранения bookbind.yaml или сохранить YAML-файл.',
+        usingInlineMetadata: 'Используются выбранные метаданные',
+        selectedMetadata: 'Выбранные метаданные',
         selectCandidatePreview: 'Выбери вариант, чтобы посмотреть метаданные.',
         input: 'Источник',
         outputPlaceholder: 'Необязательно, по умолчанию рядом с источником',
@@ -289,6 +310,9 @@ const translations = {
         conversionPlanPlaceholder: 'План конвертации и прогресс появятся здесь.',
         preparingConversion: 'Готовим конвертацию...',
         conversionFinished: 'Конвертация завершена.',
+        cancellationRequested: 'Запрошена отмена...',
+        cancel: 'Отмена',
+        confirmCancel: 'Отменить текущую конвертацию?',
         mode: 'Режим',
         command: 'Команда',
         status: 'Статус',
@@ -345,6 +369,8 @@ function App() {
     const [metadataCandidates, setMetadataCandidates] = useState<MetadataCandidateView[]>([]);
     const [selectedCandidate, setSelectedCandidate] = useState<MetadataCandidateView | null>(null);
     const [metadataPreview, setMetadataPreview] = useState<MetadataPreviewView | null>(null);
+    const [conversionMetadata, setConversionMetadata] = useState<BookMetadataView | null>(null);
+    const [showMetadataPrompt, setShowMetadataPrompt] = useState(false);
     const [metadataOutputPath, setMetadataOutputPath] = useState('bookbind.yaml');
     const [overwriteMetadata, setOverwriteMetadata] = useState(false);
     const [metadataStatus, setMetadataStatus] = useState('');
@@ -358,6 +384,7 @@ function App() {
     const [convertResult, setConvertResult] = useState<ConvertView | null>(null);
     const [convertError, setConvertError] = useState('');
     const [isConverting, setIsConverting] = useState(false);
+    const [currentConversionDryRun, setCurrentConversionDryRun] = useState(false);
     const [convertProgress, setConvertProgress] = useState<ConvertProgressEvent | null>(null);
     const [convertProgressLog, setConvertProgressLog] = useState<string[]>([]);
     const [cachePath, setCachePath] = useState('');
@@ -466,9 +493,20 @@ function App() {
         setMetadataPreview(null);
         setIsPreviewingMetadata(true);
         PreviewMetadata(candidate.Provider, candidate.ID)
-            .then((result) => setMetadataPreview(result as MetadataPreviewView))
+            .then((result) => {
+                setMetadataPreview(result as MetadataPreviewView);
+                setShowMetadataPrompt(true);
+            })
             .catch((error) => setMetadataError(String(error)))
             .finally(() => setIsPreviewingMetadata(false));
+    }
+
+    function useMetadataForConvert(book: BookMetadataView) {
+        setConversionMetadata(book);
+        setMetadataPath('');
+        setShowMetadataPrompt(false);
+        setMetadataStatus(copy.usingInlineMetadata);
+        setActiveScreen('convert');
     }
 
     function saveMetadata() {
@@ -481,7 +519,11 @@ function App() {
         setMetadataError('');
         setMetadataStatus('');
         ResolveMetadata(selectedCandidate.Provider, selectedCandidate.ID, metadataOutputPath, overwriteMetadata)
-            .then((result) => setMetadataStatus(`${copy.saved} ${result.OutputPath}`))
+            .then((result) => {
+                setMetadataStatus(`${copy.saved} ${result.OutputPath}`);
+                setMetadataPath(result.OutputPath);
+                setShowMetadataPrompt(false);
+            })
             .catch((error) => setMetadataError(String(error)))
             .finally(() => setIsSavingMetadata(false));
     }
@@ -493,20 +535,44 @@ function App() {
         }
 
         setIsConverting(true);
+        setCurrentConversionDryRun(dryRun);
         setConvertError('');
         setConvertResult(null);
         setConvertProgress(dryRun ? null : {Phase: 'preparing', Line: copy.preparingConversion, Percent: 0, Elapsed: '', Total: ''});
         setConvertProgressLog(dryRun ? [] : [copy.preparingConversion]);
-        ConvertAudio(inputPath, outputPath, metadataPath, coverPath, chapterEvery, dryRun, overwriteOutput)
+        const convertAction = conversionMetadata
+            ? ConvertAudioWithMetadata(inputPath, outputPath, conversionMetadata, coverPath, chapterEvery, dryRun, overwriteOutput)
+            : ConvertAudio(inputPath, outputPath, metadataPath, coverPath, chapterEvery, dryRun, overwriteOutput);
+        convertAction
             .then((result) => {
                 setConvertResult(result as ConvertView);
+                const summary = convertSummary(result as ConvertView);
                 if (!dryRun) {
                     setConvertProgress({Phase: 'done', Line: copy.conversionFinished, Percent: 100, Elapsed: '', Total: ''});
-                    setConvertProgressLog((current) => [...current.slice(-120), copy.conversionFinished]);
+                    setConvertProgressLog((current) => [...current.slice(-120), copy.conversionFinished, '', ...summary]);
+                } else {
+                    setConvertProgressLog(summary);
                 }
             })
-            .catch((error) => setConvertError(String(error)))
+            .catch((error) => {
+                const message = String(error);
+                setConvertError(message);
+                setConvertProgressLog((current) => [...current.slice(-120), message]);
+            })
             .finally(() => setIsConverting(false));
+    }
+
+    function cancelConvert() {
+        if (!window.confirm(copy.confirmCancel)) {
+            return;
+        }
+        CancelConvert()
+            .then((cancelled) => {
+                if (cancelled) {
+                    setConvertProgressLog((current) => [...current.slice(-120), copy.cancellationRequested]);
+                }
+            })
+            .catch((error) => setConvertError(String(error)));
     }
 
     function refreshCache() {
@@ -536,23 +602,47 @@ function App() {
             .finally(() => setIsCacheBusy(false));
     }
 
-    const convertLog = convertResult
-        ? [
-            `${copy.input}: ${convertResult.InputPath}`,
-            `${copy.files}: ${convertResult.Files?.length || 0}${convertResult.TotalTime ? ` · ${convertResult.TotalTime}` : ''}`,
-            convertResult.MetadataPath ? `${copy.metadata}: ${convertResult.MetadataPath}` : '',
-            convertResult.Title ? `${copy.title}: ${convertResult.Title}` : '',
-            convertResult.CoverPath ? `${copy.cover}: ${convertResult.CoverPath}` : '',
-            convertResult.ChapterEvery ? `${copy.chapterEvery}: ${convertResult.ChapterEvery}` : '',
-            `${copy.output}: ${convertResult.OutputPath}`,
-            convertResult.DryRun ? `${copy.mode}: ${copy.dryRun}` : `${copy.mode}: ${copy.convert}`,
-            convertResult.Command?.length ? `${copy.command}: ${convertResult.Command.join(' ')}` : '',
-            `${copy.status}: ${convertResult.Status}`,
-        ].filter(Boolean).join('\n')
-        : copy.conversionPlanPlaceholder;
+    function convertSummary(result: ConvertView) {
+        return [
+            `${copy.input}: ${result.InputPath}`,
+            `${copy.files}: ${result.Files?.length || 0}${result.TotalTime ? ` · ${result.TotalTime}` : ''}`,
+            result.MetadataPath ? `${copy.metadata}: ${result.MetadataPath}` : '',
+            conversionMetadata && !result.MetadataPath ? `${copy.metadata}: ${copy.usingInlineMetadata}` : '',
+            result.Title ? `${copy.title}: ${result.Title}` : '',
+            result.CoverPath ? `${copy.cover}: ${result.CoverPath}` : '',
+            result.ChapterEvery ? `${copy.chapterEvery}: ${result.ChapterEvery}` : '',
+            `${copy.output}: ${result.OutputPath}`,
+            result.DryRun ? `${copy.mode}: ${copy.dryRun}` : `${copy.mode}: ${copy.convert}`,
+            result.Command?.length ? `${copy.command}: ${result.Command.join(' ')}` : '',
+            `${copy.status}: ${result.Status}`,
+        ].filter(Boolean);
+    }
 
     return (
         <main className="app-shell">
+            {showMetadataPrompt && metadataPreview && (
+                <div className="modal-backdrop" role="presentation">
+                    <section aria-modal="true" className="modal" role="dialog">
+                        <h3>{copy.metadataReadyTitle}</h3>
+                        <p>{copy.metadataReadyText}</p>
+                        <div className="modal-summary">
+                            <strong>{metadataPreview.Book.Title || copy.untitled}</strong>
+                            <span>{metadataPreview.Book.Authors?.join(', ') || metadataPreview.Book.Author || copy.unknown}</span>
+                        </div>
+                        <div className="modal-actions">
+                            <button className="primary-button" onClick={() => useMetadataForConvert(metadataPreview.Book)} type="button">
+                                {copy.useForConvert}
+                            </button>
+                            <button className="secondary-button" onClick={() => setShowMetadataPrompt(false)} type="button">
+                                {copy.saveYamlInstead}
+                            </button>
+                            <button className="secondary-button" onClick={() => setShowMetadataPrompt(false)} type="button">
+                                {copy.close}
+                            </button>
+                        </div>
+                    </section>
+                </div>
+            )}
             <aside className="sidebar">
                 <div className="brand">
                     <span className="brand-mark">B</span>
@@ -805,6 +895,9 @@ function App() {
                                         <button className="primary-button" disabled={isSavingMetadata} onClick={saveMetadata} type="button">
                                             {isSavingMetadata ? copy.saving : copy.saveMetadata}
                                         </button>
+                                        <button className="secondary-button" onClick={() => useMetadataForConvert(metadataPreview.Book)} type="button">
+                                            {copy.useForConvert}
+                                        </button>
                                     </div>
                                 ) : (
                                     <div className="table-empty">{copy.selectCandidatePreview}</div>
@@ -852,7 +945,13 @@ function App() {
                             <label>
                                 {copy.metadata}
                                 <input
-                                    onChange={(event) => setMetadataPath(event.target.value)}
+                                    disabled={!!conversionMetadata}
+                                    onChange={(event) => {
+                                        setMetadataPath(event.target.value);
+                                        if (event.target.value.trim()) {
+                                            setConversionMetadata(null);
+                                        }
+                                    }}
                                     placeholder={copy.metadataPlaceholder}
                                     value={metadataPath}
                                 />
@@ -874,16 +973,32 @@ function App() {
                                 {copy.overwriteOutput}
                             </label>
                         </div>
+                        {conversionMetadata && (
+                            <div className="selected-metadata">
+                                <div>
+                                    <strong>{copy.selectedMetadata}</strong>
+                                    <span>{conversionMetadata.Title || copy.untitled}</span>
+                                </div>
+                                <button className="secondary-button" onClick={() => setConversionMetadata(null)} type="button">
+                                    {copy.clearMetadata}
+                                </button>
+                            </div>
+                        )}
                         <div className="action-row">
                             <button className="secondary-button" disabled={isConverting} onClick={() => convertAudio(true)} type="button">
                                 {isConverting ? copy.working : copy.dryRun}
                             </button>
+                            {isConverting && !currentConversionDryRun && (
+                                <button className="secondary-button danger-secondary" onClick={cancelConvert} type="button">
+                                    {copy.cancel}
+                                </button>
+                            )}
                             <button className="primary-button" disabled={isConverting} onClick={() => convertAudio(false)} type="button">
                                 {isConverting ? copy.working : copy.convert}
                             </button>
                         </div>
                         {convertError && <div className="error-box">{convertError}</div>}
-                        {(isConverting || convertProgress || convertProgressLog.length > 0) && (
+                        {(isConverting || convertProgress || convertProgressLog.length > 0 || convertResult) && (
                             <div className="progress-panel">
                                 <div className="progress-header">
                                     <strong>{convertProgress?.Phase === 'done' ? copy.done : isConverting ? copy.converting : copy.progress}</strong>
@@ -898,10 +1013,11 @@ function App() {
                                         style={{width: `${convertProgress?.Phase === 'done' ? 100 : Math.max(convertProgress?.Percent || 0, 8)}%`}}
                                     />
                                 </div>
-                                <pre className="progress-log">{convertProgressLog.join('\n')}</pre>
+                                <pre className="progress-log">
+                                    {convertProgressLog.length > 0 ? convertProgressLog.join('\n') : copy.conversionPlanPlaceholder}
+                                </pre>
                             </div>
                         )}
-                        <pre className="log-box">{convertLog}</pre>
                     </section>
                 )}
 
