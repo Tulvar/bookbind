@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -106,6 +107,9 @@ func resolveCoverPath(cliCoverPath, metadataPath string, book metadata.Book) (st
 	coverPath := strings.TrimSpace(cliCoverPath)
 	if coverPath == "" {
 		coverPath = strings.TrimSpace(book.Cover)
+		if isRemoteURL(coverPath) {
+			return "", nil
+		}
 		if coverPath != "" && metadataPath != "" && !filepath.IsAbs(coverPath) {
 			coverPath = filepath.Join(filepath.Dir(metadataPath), coverPath)
 		}
@@ -128,6 +132,14 @@ func resolveCoverPath(cliCoverPath, metadataPath string, book metadata.Book) (st
 	default:
 		return "", fmt.Errorf("cover must be .jpg, .jpeg, or .png: %s", coverPath)
 	}
+}
+
+func isRemoteURL(value string) bool {
+	parsed, err := url.Parse(value)
+	if err != nil {
+		return false
+	}
+	return parsed.Scheme == "http" || parsed.Scheme == "https"
 }
 
 func ensureOutputWritable(outputPath string, overwrite bool) error {
