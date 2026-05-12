@@ -17,6 +17,7 @@ import {
     SelectMetadataFile,
     SelectOutputFile,
 } from '../wailsjs/go/main/App';
+import {EventsOn} from '../wailsjs/runtime/runtime';
 
 type Screen = 'import' | 'metadata' | 'convert' | 'cache';
 
@@ -98,6 +99,14 @@ type ConvertView = {
     Status: string;
 };
 
+type ConvertProgressEvent = {
+    Phase: string;
+    Line: string;
+    Percent: number;
+    Elapsed: string;
+    Total: string;
+};
+
 type CacheEntryView = {
     Path: string;
     Name: string;
@@ -147,6 +156,8 @@ function App() {
     const [convertResult, setConvertResult] = useState<ConvertView | null>(null);
     const [convertError, setConvertError] = useState('');
     const [isConverting, setIsConverting] = useState(false);
+    const [convertProgress, setConvertProgress] = useState<ConvertProgressEvent | null>(null);
+    const [convertProgressLog, setConvertProgressLog] = useState<string[]>([]);
     const [cachePath, setCachePath] = useState('');
     const [cacheResult, setCacheResult] = useState<CacheListView | null>(null);
     const [cacheStatus, setCacheStatus] = useState('');
@@ -164,6 +175,16 @@ function App() {
                 setProviders([]);
                 setSelectedProviders([]);
             });
+    }, []);
+
+    useEffect(() => {
+        const unsubscribe = EventsOn('convert:progress', (event: ConvertProgressEvent) => {
+            setConvertProgress(event);
+            if (event.Line) {
+                setConvertProgressLog((current) => [...current.slice(-120), event.Line]);
+            }
+        });
+        return unsubscribe;
     }, []);
 
     function inspectInput() {
@@ -266,8 +287,16 @@ function App() {
         setIsConverting(true);
         setConvertError('');
         setConvertResult(null);
+        setConvertProgress(dryRun ? null : {Phase: 'preparing', Line: 'Preparing conversion...', Percent: 0, Elapsed: '', Total: ''});
+        setConvertProgressLog(dryRun ? [] : ['Preparing conversion...']);
         ConvertAudio(inputPath, outputPath, metadataPath, coverPath, chapterEvery, dryRun, overwriteOutput)
-            .then((result) => setConvertResult(result as ConvertView))
+            .then((result) => {
+                setConvertResult(result as ConvertView);
+                if (!dryRun) {
+                    setConvertProgress({Phase: 'done', Line: 'Conversion finished.', Percent: 100, Elapsed: '', Total: ''});
+                    setConvertProgressLog((current) => [...current.slice(-120), 'Conversion finished.']);
+                }
+            })
             .catch((error) => setConvertError(String(error)))
             .finally(() => setIsConverting(false));
     }
@@ -635,6 +664,24 @@ function App() {
                             </button>
                         </div>
                         {convertError && <div className="error-box">{convertError}</div>}
+                        {(isConverting || convertProgress || convertProgressLog.length > 0) && (
+                            <div className="progress-panel">
+                                <div className="progress-header">
+                                    <strong>{convertProgress?.Phase === 'done' ? 'Done' : isConverting ? 'Converting' : 'Progress'}</strong>
+                                    <span>
+                                        {convertProgress?.Elapsed
+                                            ? `Elapsed audio: ${convertProgress.Elapsed}${convertProgress.Total ? ` / ${convertProgress.Total}` : ''}`
+                                            : isConverting ? 'ffmpeg is running' : ''}
+                                    </span>
+                                </div>
+                                <div className="progress-track">
+                                    <span
+                                        style={{width: `${convertProgress?.Phase === 'done' ? 100 : Math.max(convertProgress?.Percent || 0, 8)}%`}}
+                                    />
+                                </div>
+                                <pre className="progress-log">{convertProgressLog.join('\n')}</pre>
+                            </div>
+                        )}
                         <pre className="log-box">{convertLog}</pre>
                     </section>
                 )}

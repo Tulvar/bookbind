@@ -3,6 +3,7 @@ package app
 import (
 	"context"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -20,6 +21,7 @@ type ConvertRequest struct {
 	ChapterEvery string
 	DryRun       bool
 	Overwrite    bool
+	Progress     io.Writer
 }
 
 type ConvertResult struct {
@@ -68,13 +70,14 @@ func (a *App) Convert(ctx context.Context, req ConvertRequest) (ConvertResult, e
 	}
 
 	build, err := a.builder.Build(ctx, m4b.BuildRequest{
-		Input:        input,
-		Metadata:     book,
-		CoverPath:    coverPath,
-		OutputPath:   outputPath,
-		Overwrite:    req.Overwrite,
-		DryRun:       req.DryRun,
-		ChapterEvery: chapterEvery,
+		Input:          input,
+		Metadata:       book,
+		CoverPath:      coverPath,
+		OutputPath:     outputPath,
+		Overwrite:      req.Overwrite,
+		DryRun:         req.DryRun,
+		ChapterEvery:   chapterEvery,
+		ProgressWriter: req.Progress,
 	})
 	if err != nil {
 		return ConvertResult{}, err

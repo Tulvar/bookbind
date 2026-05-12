@@ -1,15 +1,19 @@
 package main
 
 import (
+	"bufio"
 	"context"
 	"fmt"
+	"io"
 	"path/filepath"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
 
 	coreapp "github.com/Tulvar/bookbind/internal/app"
 	"github.com/Tulvar/bookbind/internal/audio"
+	"github.com/Tulvar/bookbind/internal/m4b"
 	"github.com/Tulvar/bookbind/internal/metadata"
 	"github.com/Tulvar/bookbind/internal/providers"
 	"github.com/Tulvar/bookbind/pkg/version"
@@ -23,8 +27,23 @@ type App struct {
 
 func NewApp() *App {
 	return &App{
-		core: coreapp.New(),
+		core: coreapp.New(coreapp.WithBuilder(&m4b.Builder{
+			FFmpegPath: "ffmpeg",
+			Runner:     &desktopProgressRunner{},
+		})),
 	}
+}
+
+type desktopProgressRunner struct {
+	writer io.Writer
+}
+
+func (r *desktopProgressRunner) SetProgressWriter(writer io.Writer) {
+	r.writer = writer
+}
+
+func (r *desktopProgressRunner) Run(ctx context.Context, name string, args ...string) error {
+	return m4b.ReportingRunner{Writer: r.writer}.Run(ctx, name, args...)
 }
 
 func (a *App) startup(ctx context.Context) {
@@ -314,7 +333,30 @@ type ConvertView struct {
 	Status       string
 }
 
+type ConvertProgressEvent struct {
+	Phase   string
+	Line    string
+	Percent int
+	Elapsed string
+	Total   string
+}
+
 func (a *App) ConvertAudio(inputPath, outputPath, metadataPath, coverPath, chapterEvery string, dryRun, overwrite bool) (ConvertView, error) {
+	var progress *convertProgressWriter
+	if !dryRun {
+		progress = newConvertProgressWriter(a.dialogContext(), 0)
+		if inspect, inspectErr := a.core.InspectInput(a.dialogContext(), coreapp.InspectRequest{InputPath: strings.TrimSpace(inputPath)}); inspectErr == nil {
+			for _, file := range inspect.Input.Files {
+				progress.total += file.Duration
+			}
+			wailsruntime.EventsEmit(a.dialogContext(), "convert:progress", ConvertProgressEvent{
+				Phase:   "converting",
+				Line:    "ffmpeg started",
+				Percent: 0,
+				Total:   formatDuration(progress.total),
+			})
+		}
+	}
 	result, err := a.core.Convert(a.dialogContext(), coreapp.ConvertRequest{
 		InputPath:    strings.TrimSpace(inputPath),
 		OutputPath:   strings.TrimSpace(outputPath),
@@ -323,6 +365,7 @@ func (a *App) ConvertAudio(inputPath, outputPath, metadataPath, coverPath, chapt
 		ChapterEvery: strings.TrimSpace(chapterEvery),
 		DryRun:       dryRun,
 		Overwrite:    overwrite,
+		Progress:     progress,
 	})
 	if err != nil {
 		return ConvertView{}, err
@@ -361,6 +404,78 @@ func (a *App) ConvertAudio(inputPath, outputPath, metadataPath, coverPath, chapt
 		Command:      result.Command,
 		Status:       status,
 	}, nil
+}
+
+var ffmpegTimePattern = regexp.MustCompile(`time=(\d+):(\d+):(\d+(?:\.\d+)?)`)
+
+type convertProgressWriter struct {
+	ctx   context.Context
+	total time.Duration
+}
+
+func newConvertProgressWriter(ctx context.Context, total time.Duration) *convertProgressWriter {
+	return &convertProgressWriter{ctx: ctx, total: total}
+}
+
+func (w *convertProgressWriter) Write(data []byte) (int, error) {
+	scanner := bufio.NewScanner(strings.NewReader(string(data)))
+	scanner.Split(scanProgressLines)
+	for scanner.Scan() {
+		line := strings.TrimSpace(scanner.Text())
+		if line == "" {
+			continue
+		}
+		event := ConvertProgressEvent{
+			Phase: "converting",
+			Line:  line,
+		}
+		if elapsed := parseFFmpegProgressTime(line); elapsed > 0 {
+			event.Elapsed = formatDuration(elapsed)
+			event.Total = formatDuration(w.total)
+			if w.total > 0 {
+				event.Percent = int(elapsed * 100 / w.total)
+				if event.Percent > 99 {
+					event.Percent = 99
+				}
+			}
+		}
+		wailsruntime.EventsEmit(w.ctx, "convert:progress", event)
+	}
+	return len(data), scanner.Err()
+}
+
+func scanProgressLines(data []byte, atEOF bool) (advance int, token []byte, err error) {
+	for index, value := range data {
+		if value == '\n' || value == '\r' {
+			return index + 1, data[0:index], nil
+		}
+	}
+	if atEOF && len(data) > 0 {
+		return len(data), data, nil
+	}
+	return 0, nil, nil
+}
+
+func parseFFmpegProgressTime(line string) time.Duration {
+	match := ffmpegTimePattern.FindStringSubmatch(line)
+	if len(match) != 4 {
+		return 0
+	}
+	hours, err := strconv.Atoi(match[1])
+	if err != nil {
+		return 0
+	}
+	minutes, err := strconv.Atoi(match[2])
+	if err != nil {
+		return 0
+	}
+	seconds, err := strconv.ParseFloat(match[3], 64)
+	if err != nil {
+		return 0
+	}
+	return time.Duration(hours)*time.Hour +
+		time.Duration(minutes)*time.Minute +
+		time.Duration(seconds*float64(time.Second))
 }
 
 func candidateView(candidate providers.Candidate) MetadataCandidateView {
