@@ -1334,7 +1334,7 @@ BuildM4B(ctx, request)
 2. [x] Import screen: file/folder picker, cover, metadata.yaml
 3. [x] Metadata screen: providers, search, preview, select/export
 4. [x] Convert screen: output path, dry-run, convert log
-5. Cache screen: list/clean
+5. [x] Cache screen: list/clean
 6. CI smoke для frontend lint/build
 7. release workflow для desktop artifacts
 ```

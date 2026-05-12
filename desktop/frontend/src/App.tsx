@@ -3,13 +3,16 @@ import './App.css';
 import {
     AppVersion,
     AvailableProviders,
+    CleanCache,
     ConvertAudio,
     InspectPath,
+    ListCache,
     PreviewMetadata,
     ResolveMetadata,
     SearchMetadata,
     SelectAudioDirectory,
     SelectAudioFile,
+    SelectCacheDirectory,
     SelectCoverFile,
     SelectMetadataFile,
     SelectOutputFile,
@@ -95,6 +98,19 @@ type ConvertView = {
     Status: string;
 };
 
+type CacheEntryView = {
+    Path: string;
+    Name: string;
+    Kind: string;
+    Size: string;
+};
+
+type CacheListView = {
+    Path: string;
+    Entries: CacheEntryView[];
+    Size: string;
+};
+
 const screens: Array<{ id: Screen; label: string }> = [
     {id: 'import', label: 'Import'},
     {id: 'metadata', label: 'Metadata'},
@@ -131,6 +147,11 @@ function App() {
     const [convertResult, setConvertResult] = useState<ConvertView | null>(null);
     const [convertError, setConvertError] = useState('');
     const [isConverting, setIsConverting] = useState(false);
+    const [cachePath, setCachePath] = useState('');
+    const [cacheResult, setCacheResult] = useState<CacheListView | null>(null);
+    const [cacheStatus, setCacheStatus] = useState('');
+    const [cacheError, setCacheError] = useState('');
+    const [isCacheBusy, setIsCacheBusy] = useState(false);
 
     useEffect(() => {
         AppVersion().then(setVersion).catch(() => setVersion('unknown'));
@@ -166,6 +187,7 @@ function App() {
     function selectPath(action: () => Promise<string>, update: (path: string) => void) {
         setInspectError('');
         setConvertError('');
+        setCacheError('');
         action()
             .then((path) => {
                 if (path) {
@@ -248,6 +270,33 @@ function App() {
             .then((result) => setConvertResult(result as ConvertView))
             .catch((error) => setConvertError(String(error)))
             .finally(() => setIsConverting(false));
+    }
+
+    function refreshCache() {
+        setIsCacheBusy(true);
+        setCacheError('');
+        setCacheStatus('');
+        ListCache(cachePath)
+            .then((result) => setCacheResult(result as CacheListView))
+            .catch((error) => {
+                setCacheResult(null);
+                setCacheError(String(error));
+            })
+            .finally(() => setIsCacheBusy(false));
+    }
+
+    function cleanCache() {
+        setIsCacheBusy(true);
+        setCacheError('');
+        setCacheStatus('');
+        CleanCache(cachePath)
+            .then((result) => {
+                setCacheStatus(`Removed ${result.Removed} entries · ${result.RemovedSize}`);
+                return ListCache(cachePath);
+            })
+            .then((result) => setCacheResult(result as CacheListView))
+            .catch((error) => setCacheError(String(error)))
+            .finally(() => setIsCacheBusy(false));
     }
 
     const convertLog = convertResult
@@ -593,11 +642,56 @@ function App() {
                 {activeScreen === 'cache' && (
                     <section className="panel">
                         <h3>Cache</h3>
-                        <div className="summary-row">
-                            <span>Provider response cache</span>
-                            <strong>Ready</strong>
+                        <div className="cache-toolbar">
+                            <label className="path-field">
+                                Cache path
+                                <div className="field-with-button">
+                                    <input
+                                        onChange={(event) => setCachePath(event.target.value)}
+                                        placeholder="Default bookbind cache"
+                                        value={cachePath}
+                                    />
+                                    <button className="secondary-button" onClick={() => selectPath(SelectCacheDirectory, setCachePath)} type="button">
+                                        Browse
+                                    </button>
+                                </div>
+                            </label>
+                            <button className="secondary-button" disabled={isCacheBusy} onClick={refreshCache} type="button">
+                                {isCacheBusy ? 'Working' : 'Refresh'}
+                            </button>
+                            <button
+                                className="primary-button danger"
+                                disabled={isCacheBusy || !cacheResult || cacheResult.Entries.length === 0}
+                                onClick={cleanCache}
+                                type="button"
+                            >
+                                Clean
+                            </button>
                         </div>
-                        <div className="log-box">Cache list and clean actions will be wired to the Go bridge next.</div>
+                        {cacheError && <div className="error-box">{cacheError}</div>}
+                        {cacheStatus && <div className="success-box">{cacheStatus}</div>}
+                        {cacheResult && (
+                            <div className="summary-row">
+                                <span>{cacheResult.Path}</span>
+                                <strong>{cacheResult.Entries.length} entries · {cacheResult.Size}</strong>
+                            </div>
+                        )}
+                        <div className="table-shell">
+                            <div className="cache-table-header">
+                                <span>Type</span>
+                                <span>Name</span>
+                                <span>Size</span>
+                            </div>
+                            {!cacheResult && <div className="table-empty">Refresh cache to see local provider responses.</div>}
+                            {cacheResult && cacheResult.Entries.length === 0 && <div className="table-empty">Cache is empty.</div>}
+                            {cacheResult?.Entries.map((entry) => (
+                                <div className="cache-row" key={entry.Path}>
+                                    <span>{entry.Kind}</span>
+                                    <strong>{entry.Name}</strong>
+                                    <span>{entry.Size}</span>
+                                </div>
+                            ))}
+                        </div>
                     </section>
                 )}
             </section>

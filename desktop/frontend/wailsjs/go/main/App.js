@@ -10,12 +10,20 @@ export function AvailableProviders() {
   return window['go']['main']['App']['AvailableProviders']();
 }
 
+export function CleanCache(arg1) {
+  return window['go']['main']['App']['CleanCache'](arg1);
+}
+
 export function ConvertAudio(arg1, arg2, arg3, arg4, arg5, arg6, arg7) {
   return window['go']['main']['App']['ConvertAudio'](arg1, arg2, arg3, arg4, arg5, arg6, arg7);
 }
 
 export function InspectPath(arg1) {
   return window['go']['main']['App']['InspectPath'](arg1);
+}
+
+export function ListCache(arg1) {
+  return window['go']['main']['App']['ListCache'](arg1);
 }
 
 export function PreviewMetadata(arg1, arg2) {
@@ -36,6 +44,10 @@ export function SelectAudioDirectory() {
 
 export function SelectAudioFile() {
   return window['go']['main']['App']['SelectAudioFile']();
+}
+
+export function SelectCacheDirectory() {
+  return window['go']['main']['App']['SelectCacheDirectory']();
 }
 
 export function SelectCoverFile() {
