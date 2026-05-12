@@ -15,3 +15,12 @@ bookbind.db
 build/
 dist/
 node_modules/
+package.json.md5
+
+# Keep Wails desktop packaging templates, but not generated binaries/assets.
+!desktop/build/
+!desktop/build/**
+desktop/build/bin/
+!desktop/frontend/dist/
+desktop/frontend/dist/*
+!desktop/frontend/dist/.gitkeep

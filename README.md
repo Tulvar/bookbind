@@ -2,10 +2,10 @@
 
 `bookbind` converts MP3 audiobook files into M4B.
 
-Current milestone: `v0.3.0`.
+Current milestone: `v0.4.0`.
 
-The current focus is a reliable Go core that can be reused by CLI, tests, and
-the future desktop UI.
+The current focus is a Wails desktop UI for Windows, macOS, and Linux on top of
+the existing Go core.
 
 ## Current CLI
 
@@ -130,20 +130,37 @@ go test ./...
 go build ./cmd/bookbind
 ```
 
+Run the desktop shell locally:
+
+```bash
+cd desktop
+wails dev
+```
+
 Release builds are created by pushing a version tag:
 
 ```bash
-git tag v0.3.0
-git push origin v0.3.0
+git tag v0.4.0
+git push origin v0.4.0
 ```
 
 The release workflow builds CLI artifacts named with the version, for example
-`bookbind-v0.3.0-linux-amd64` and `bookbind-v0.3.0-windows-amd64.exe`.
+`bookbind-v0.4.0-linux-amd64` and `bookbind-v0.4.0-windows-amd64.exe`.
+It also builds desktop artifacts named like
+`bookbind-desktop-v0.4.0-darwin-arm64.zip`.
 
 `ffmpeg` and `ffprobe` must be available on `PATH` for real inspect/convert
 runs.
 
 ## Milestones
+
+### v0.4.0
+
+- Wails desktop shell for Windows, macOS, and Linux
+- React/TypeScript frontend
+- Go bridge over the existing app use cases
+- import, metadata, convert, and cache screens
+- desktop build and CI smoke checks
 
 ### v0.3.0
 

@@ -1161,41 +1161,48 @@ overwrite protection
 ### MVP v0.2
 
 ```text
-desktop UI skeleton
-Windows/macOS/Linux target
-import screen: MP3, директория MP3, cover, metadata.yaml
-inspect screen: файлы, длительности, найденные теги
-build screen: output path, dry-run preview, ffmpeg progress
-сборка desktop-приложения локально
+metadata template generation
+filename parser
+embedded tags
+synthetic chapters
+richer inspect output
 ```
 
 ### MVP v0.3
 
 ```text
 search
-FantLab
 Google Books
 Open Library
-candidate selection UI
-metadata editor
-filename parser
-embedded tags
-template generation
+provider selection
+candidate table
+metadata preview
+candidate export to bookbind.yaml
+convert --interactive --select
+provider response cache
+versioned CLI release artifacts
 ```
 
 ### MVP v0.4
 
 ```text
-EPUB TOC import
-EPUB chapters → audio files matching
-manual chapter matching UI
-synthetic chapters
-cache
+Wails desktop shell
+React/TypeScript frontend
+Windows/macOS/Linux target
+app bridge over internal/app use cases
+import screen: MP3, директория MP3, cover, metadata.yaml
+metadata search screen: providers, candidate table, preview, select
+convert screen: output path, dry-run, progress/log
+cache screen: list/clean
+desktop CI smoke checks
 ```
 
 ### MVP v0.5
 
 ```text
+EPUB TOC import
+EPUB chapters → audio files matching
+manual chapter matching UI
 LitRes/MyBook experimental
 duration matching
 narrator matching
@@ -1216,7 +1223,7 @@ Desktop-приложение нужно считать основным инте
 ```text
 Go backend
 Wails desktop shell
-React/Vue/Svelte frontend
+React/TypeScript frontend
 ```
 
 Причины:
@@ -1234,8 +1241,6 @@ React/Vue/Svelte frontend
 cmd/
   bookbind/
     main.go
-  bookbind-desktop/
-    main.go
 
 internal/
   app/
@@ -1249,7 +1254,9 @@ internal/
     bridge.go
     events.go
 
+wails.json
 frontend/
+  package.json
   src/
     App.tsx
     screens/
@@ -1285,8 +1292,51 @@ Desktop UI вызывает только use cases:
 InspectInput(ctx, request)
 SearchMetadata(ctx, query)
 ResolveMetadata(ctx, request)
+PreviewMetadata(ctx, request)
+TemplateMetadata(ctx, request)
+Convert(ctx, request)
+ListCache(path)
+CleanCache(path)
 PreviewChapters(ctx, request)
 BuildM4B(ctx, request)
+```
+
+### v0.4.0 desktop shell plan
+
+Первый desktop-релиз не должен пытаться сразу заменить всю CLI-функциональность.
+Цель `v0.4.0` — открыть приложение, связать frontend с Go backend и провести
+пользователя через основной audiobook flow без ручного набора CLI-флагов.
+
+Технический выбор:
+
+```text
+- Wails
+- React
+- TypeScript
+- Go bridge в internal/desktop
+- переиспользование internal/app без дублирования бизнес-логики
+```
+
+Первый PR со scaffold:
+
+```text
+- [x] Wails project files
+- [x] frontend shell
+- [x] backend bridge AppVersion
+- [x] навигация Import / Metadata / Convert / Cache
+- [x] локальная команда запуска desktop dev mode
+```
+
+Следующие PR:
+
+```text
+1. [x] Import screen: input path inspect, files, durations, embedded tags
+2. [x] Import screen: file/folder picker, cover, metadata.yaml
+3. [x] Metadata screen: providers, search, preview, select/export
+4. [x] Convert screen: output path, dry-run, convert log
+5. [x] Cache screen: list/clean
+6. [x] CI smoke для frontend lint/build
+7. [x] release workflow для desktop artifacts
 ```
 
 UI не должен напрямую знать про ffmpeg, scoring, merge-правила, парсинг EPUB
@@ -1410,9 +1460,8 @@ CI нужен обязательно, даже если не в самый пе�
 - integration tests с короткими test MP3
 - проверка ffmpeg/ffprobe, если доступны
 - frontend lint/test
-- Wails build artifacts
 - [x] release workflow для CLI Windows/macOS/Linux
-- Wails release artifacts для desktop UI
+- [x] Wails release artifacts для desktop UI
 ```
 
 CI не должен зависеть от внешних metadata providers. Провайдеры тестируются через
