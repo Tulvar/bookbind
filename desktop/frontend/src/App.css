@@ -118,7 +118,7 @@
     align-items: end;
     display: grid;
     gap: 12px;
-    grid-template-columns: minmax(0, 1fr) 120px;
+    grid-template-columns: minmax(0, 1fr) 150px 120px;
     margin-bottom: 16px;
 }
 
@@ -140,9 +140,22 @@ input {
     font: inherit;
     min-width: 0;
     padding: 10px 11px;
+    width: 100%;
 }
 
-.primary-button {
+.button-group,
+.field-with-button {
+    display: flex;
+    gap: 8px;
+    min-width: 0;
+}
+
+.field-with-button input {
+    flex: 1;
+}
+
+.primary-button,
+.secondary-button {
     background: #2454a6;
     border: 0;
     border-radius: 6px;
@@ -152,6 +165,16 @@ input {
     font-weight: 700;
     height: 41px;
     padding: 0 16px;
+}
+
+.secondary-button {
+    background: #e8eef7;
+    color: #1f3f75;
+    font-weight: 600;
+}
+
+.secondary-button:hover {
+    background: #dbe7f8;
 }
 
 .primary-button:disabled {
@@ -277,6 +300,11 @@ input {
     .inspect-row,
     .file-row {
         grid-template-columns: 1fr;
+    }
+
+    .button-group,
+    .field-with-button {
+        flex-wrap: wrap;
     }
 
     .tag-stack {

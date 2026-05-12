@@ -13,3 +13,19 @@ export function AvailableProviders() {
 export function InspectPath(arg1) {
   return window['go']['main']['App']['InspectPath'](arg1);
 }
+
+export function SelectAudioDirectory() {
+  return window['go']['main']['App']['SelectAudioDirectory']();
+}
+
+export function SelectAudioFile() {
+  return window['go']['main']['App']['SelectAudioFile']();
+}
+
+export function SelectCoverFile() {
+  return window['go']['main']['App']['SelectCoverFile']();
+}
+
+export function SelectMetadataFile() {
+  return window['go']['main']['App']['SelectMetadataFile']();
+}

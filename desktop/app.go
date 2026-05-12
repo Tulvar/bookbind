@@ -8,6 +8,7 @@ import (
 	coreapp "github.com/Tulvar/bookbind/internal/app"
 	"github.com/Tulvar/bookbind/internal/audio"
 	"github.com/Tulvar/bookbind/pkg/version"
+	wailsruntime "github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
 type App struct {
@@ -31,6 +32,49 @@ func (a *App) AppVersion() string {
 
 func (a *App) AvailableProviders() []coreapp.ProviderInfo {
 	return coreapp.AvailableProviders()
+}
+
+func (a *App) SelectAudioFile() (string, error) {
+	return wailsruntime.OpenFileDialog(a.dialogContext(), wailsruntime.OpenDialogOptions{
+		Title: "Select audiobook MP3",
+		Filters: []wailsruntime.FileFilter{
+			{DisplayName: "MP3 audio", Pattern: "*.mp3"},
+			{DisplayName: "All files", Pattern: "*.*"},
+		},
+	})
+}
+
+func (a *App) SelectAudioDirectory() (string, error) {
+	return wailsruntime.OpenDirectoryDialog(a.dialogContext(), wailsruntime.OpenDialogOptions{
+		Title: "Select audiobook folder",
+	})
+}
+
+func (a *App) SelectMetadataFile() (string, error) {
+	return wailsruntime.OpenFileDialog(a.dialogContext(), wailsruntime.OpenDialogOptions{
+		Title: "Select metadata YAML",
+		Filters: []wailsruntime.FileFilter{
+			{DisplayName: "YAML metadata", Pattern: "*.yaml;*.yml"},
+			{DisplayName: "All files", Pattern: "*.*"},
+		},
+	})
+}
+
+func (a *App) SelectCoverFile() (string, error) {
+	return wailsruntime.OpenFileDialog(a.dialogContext(), wailsruntime.OpenDialogOptions{
+		Title: "Select cover image",
+		Filters: []wailsruntime.FileFilter{
+			{DisplayName: "Cover image", Pattern: "*.jpg;*.jpeg;*.png"},
+			{DisplayName: "All files", Pattern: "*.*"},
+		},
+	})
+}
+
+func (a *App) dialogContext() context.Context {
+	if a.ctx != nil {
+		return a.ctx
+	}
+	return context.Background()
 }
 
 type InspectView struct {

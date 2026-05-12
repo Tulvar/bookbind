@@ -8,3 +8,11 @@ export function AppVersion():Promise<string>;
 export function AvailableProviders():Promise<Array<app.ProviderInfo>>;
 
 export function InspectPath(arg1:string):Promise<main.InspectView>;
+
+export function SelectAudioDirectory():Promise<string>;
+
+export function SelectAudioFile():Promise<string>;
+
+export function SelectCoverFile():Promise<string>;
+
+export function SelectMetadataFile():Promise<string>;
