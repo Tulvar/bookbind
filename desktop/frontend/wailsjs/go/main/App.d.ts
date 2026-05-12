@@ -7,9 +7,13 @@ export function AppVersion():Promise<string>;
 
 export function AvailableProviders():Promise<Array<app.ProviderInfo>>;
 
+export function CleanCache(arg1:string):Promise<main.CacheCleanView>;
+
 export function ConvertAudio(arg1:string,arg2:string,arg3:string,arg4:string,arg5:string,arg6:boolean,arg7:boolean):Promise<main.ConvertView>;
 
 export function InspectPath(arg1:string):Promise<main.InspectView>;
+
+export function ListCache(arg1:string):Promise<main.CacheListView>;
 
 export function PreviewMetadata(arg1:string,arg2:string):Promise<main.MetadataPreviewView>;
 
@@ -20,6 +24,8 @@ export function SearchMetadata(arg1:string,arg2:string,arg3:Array<string>):Promi
 export function SelectAudioDirectory():Promise<string>;
 
 export function SelectAudioFile():Promise<string>;
+
+export function SelectCacheDirectory():Promise<string>;
 
 export function SelectCoverFile():Promise<string>;
 

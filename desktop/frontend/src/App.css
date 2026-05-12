@@ -182,6 +182,14 @@ input {
     cursor: default;
 }
 
+.primary-button.danger {
+    background: #b4233c;
+}
+
+.primary-button.danger:hover {
+    background: #991b32;
+}
+
 .secondary-button:disabled {
     color: #94a3b8;
     cursor: default;
@@ -319,6 +327,42 @@ input {
     gap: 10px;
     justify-content: flex-end;
     margin-top: 16px;
+}
+
+.cache-toolbar {
+    align-items: end;
+    display: grid;
+    gap: 12px;
+    grid-template-columns: minmax(0, 1fr) 120px 100px;
+    margin-bottom: 16px;
+}
+
+.cache-table-header,
+.cache-row {
+    display: grid;
+    gap: 12px;
+    grid-template-columns: 90px minmax(0, 1fr) 100px;
+}
+
+.cache-table-header {
+    background: #f0f4f8;
+    color: #4b5b70;
+    font-size: 13px;
+    font-weight: 700;
+    padding: 10px 12px;
+}
+
+.cache-row {
+    border-top: 1px solid #e5eaf0;
+    padding: 12px;
+}
+
+.cache-row strong,
+.cache-row span {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .metadata-search {
@@ -494,6 +538,9 @@ dd {
     .inspect-row,
     .file-row,
     .convert-grid,
+    .cache-toolbar,
+    .cache-table-header,
+    .cache-row,
     .metadata-search,
     .metadata-layout,
     .metadata-table-header,

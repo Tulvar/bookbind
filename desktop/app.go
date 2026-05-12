@@ -2,6 +2,8 @@ package main
 
 import (
 	"context"
+	"fmt"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
@@ -50,6 +52,12 @@ func (a *App) SelectAudioFile() (string, error) {
 func (a *App) SelectAudioDirectory() (string, error) {
 	return wailsruntime.OpenDirectoryDialog(a.dialogContext(), wailsruntime.OpenDialogOptions{
 		Title: "Select audiobook folder",
+	})
+}
+
+func (a *App) SelectCacheDirectory() (string, error) {
+	return wailsruntime.OpenDirectoryDialog(a.dialogContext(), wailsruntime.OpenDialogOptions{
+		Title: "Select cache folder",
 	})
 }
 
@@ -233,6 +241,65 @@ func (a *App) ResolveMetadata(provider, id, outputPath string, overwrite bool) (
 	}, nil
 }
 
+type CacheEntryView struct {
+	Path string
+	Name string
+	Kind string
+	Size string
+}
+
+type CacheListView struct {
+	Path    string
+	Entries []CacheEntryView
+	Size    string
+}
+
+type CacheCleanView struct {
+	Path        string
+	Removed     int
+	RemovedSize string
+}
+
+func (a *App) ListCache(path string) (CacheListView, error) {
+	result, err := a.core.ListCache(strings.TrimSpace(path))
+	if err != nil {
+		return CacheListView{}, err
+	}
+
+	entries := make([]CacheEntryView, 0, len(result.Entries))
+	for _, entry := range result.Entries {
+		kind := "file"
+		if entry.IsDir {
+			kind = "dir"
+		}
+		entries = append(entries, CacheEntryView{
+			Path: entry.Path,
+			Name: filepath.Base(entry.Path),
+			Kind: kind,
+			Size: formatBytes(entry.Size),
+		})
+	}
+
+	return CacheListView{
+		Path:    result.Path,
+		Entries: entries,
+		Size:    formatBytes(result.Size),
+	}, nil
+}
+
+func (a *App) CleanCache(path string) (CacheCleanView, error) {
+	result, err := a.core.CleanCache(strings.TrimSpace(path))
+	if err != nil {
+		return CacheCleanView{}, err
+	}
+
+	return CacheCleanView{
+		Path:        result.Path,
+		Removed:     result.Removed,
+		RemovedSize: formatBytes(result.RemovedSize),
+	}, nil
+}
+
 type ConvertView struct {
 	InputPath    string
 	Files        []InspectFileView
@@ -364,4 +431,19 @@ func formatConfidence(confidence float64) string {
 		return ""
 	}
 	return strconv.Itoa(int(confidence*100+0.5)) + "%"
+}
+
+func formatBytes(size int64) string {
+	const unit = int64(1024)
+	if size < unit {
+		return fmt.Sprintf("%d B", size)
+	}
+	value := float64(size)
+	for _, suffix := range []string{"KiB", "MiB", "GiB"} {
+		value /= float64(unit)
+		if value < float64(unit) {
+			return fmt.Sprintf("%.1f %s", value, suffix)
+		}
+	}
+	return fmt.Sprintf("%.1f TiB", value/float64(unit))
 }
