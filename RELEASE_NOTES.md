@@ -1,5 +1,40 @@
 # Release Notes
 
+## v0.4.0
+
+`v0.4.0` introduces the first desktop release on top of the existing Go core.
+
+### Added
+
+- Wails desktop app scaffold for Windows, macOS, and Linux.
+- React/TypeScript frontend shell with Import, Metadata, Convert, and Cache
+  screens.
+- Import screen with audio file/folder picker, input inspection, durations,
+  embedded tags, chapter counts, metadata YAML picker, and cover picker.
+- Metadata screen with provider selection, candidate search, preview, and
+  metadata YAML export.
+- Convert screen with input/output fields, output save dialog, metadata/cover
+  paths, chapter interval, overwrite control, dry-run preview, real conversion,
+  and command/status log.
+- Cache screen with cache path selection, entry listing, size summary, and clean
+  action.
+- Desktop CI smoke job for frontend build, desktop Go vet/test, and Wails build.
+- Release workflow artifacts for desktop builds on Linux, macOS, and Windows.
+
+### Changed
+
+- The release workflow now produces both CLI and desktop artifacts.
+- The default release workflow version is `v0.4.0`.
+- `bookbind version` reports `0.4.0` for source builds on this release branch.
+
+### Notes
+
+- Real inspection and conversion still require `ffmpeg` and `ffprobe` on
+  `PATH`.
+- Linux desktop CI installs GTK/WebKit dependencies required by Wails; runner
+  package installation can still be slower than pure Go jobs.
+- Desktop artifacts are unsigned first-release builds.
+
 ## v0.3.0
 
 `v0.3.0` focuses on metadata discovery, candidate selection, caching, and

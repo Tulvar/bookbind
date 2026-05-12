@@ -140,12 +140,14 @@ wails dev
 Release builds are created by pushing a version tag:
 
 ```bash
-git tag v0.3.0
-git push origin v0.3.0
+git tag v0.4.0
+git push origin v0.4.0
 ```
 
 The release workflow builds CLI artifacts named with the version, for example
-`bookbind-v0.3.0-linux-amd64` and `bookbind-v0.3.0-windows-amd64.exe`.
+`bookbind-v0.4.0-linux-amd64` and `bookbind-v0.4.0-windows-amd64.exe`.
+It also builds desktop artifacts named like
+`bookbind-desktop-v0.4.0-darwin-arm64.zip`.
 
 `ffmpeg` and `ffprobe` must be available on `PATH` for real inspect/convert
 runs.
