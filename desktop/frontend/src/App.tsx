@@ -20,6 +20,7 @@ import {
 import {EventsOn} from '../wailsjs/runtime/runtime';
 
 type Screen = 'import' | 'metadata' | 'convert' | 'cache';
+type Locale = 'en' | 'ru';
 
 type ProviderInfo = {
     Name: string;
@@ -120,15 +121,216 @@ type CacheListView = {
     Size: string;
 };
 
-const screens: Array<{ id: Screen; label: string }> = [
-    {id: 'import', label: 'Import'},
-    {id: 'metadata', label: 'Metadata'},
-    {id: 'convert', label: 'Convert'},
-    {id: 'cache', label: 'Cache'},
+const screens: Screen[] = ['import', 'metadata', 'convert', 'cache'];
+
+const translations = {
+    en: {
+        language: 'Language',
+        languageEnglish: 'English',
+        languageRussian: 'Russian',
+        version: 'Version',
+        desktopPreview: 'Desktop preview',
+        desktopShell: 'Desktop shell',
+        goBridgeConnected: 'Go bridge connected',
+        nav: {
+            import: 'Import',
+            metadata: 'Metadata',
+            convert: 'Convert',
+            cache: 'Cache',
+        },
+        importSource: 'Import source',
+        inputPath: 'Input path',
+        inputPlaceholder: '/path/to/book.mp3 or /path/to/book-folder',
+        file: 'File',
+        folder: 'Folder',
+        inspecting: 'Inspecting',
+        inspect: 'Inspect',
+        metadata: 'Metadata',
+        metadataPlaceholder: 'Optional bookbind.yaml',
+        cover: 'Cover',
+        coverPlaceholder: 'Optional JPG or PNG cover',
+        durationUnknown: 'duration unknown',
+        files: 'files',
+        channel: 'ch',
+        chapters: 'chapters',
+        metadataSearch: 'Metadata search',
+        title: 'Title',
+        bookTitle: 'Book title',
+        author: 'Author',
+        optionalAuthor: 'Optional author',
+        searching: 'Searching',
+        search: 'Search',
+        noProviders: 'No providers available',
+        provider: 'Provider',
+        authors: 'Authors',
+        year: 'Year',
+        confidence: 'Confidence',
+        searchingProviders: 'Searching providers...',
+        noCandidates: 'No candidates yet.',
+        untitled: 'Untitled',
+        unknown: 'Unknown',
+        preview: 'Preview',
+        loading: 'Loading',
+        noCover: 'No cover',
+        narrators: 'Narrators',
+        series: 'Series',
+        output: 'Output',
+        overwriteExistingFile: 'Overwrite existing file',
+        saving: 'Saving',
+        saveMetadata: 'Save metadata',
+        selectCandidatePreview: 'Select a candidate to preview metadata.',
+        input: 'Input',
+        outputPlaceholder: 'Optional, defaults next to input',
+        chapterInterval: 'Chapter interval',
+        chapterEvery: 'Chapter every',
+        chapterIntervalPlaceholder: 'Optional, for example 10m',
+        overwriteOutput: 'Overwrite output',
+        working: 'Working',
+        dryRun: 'Dry run',
+        converting: 'Converting',
+        convert: 'Convert',
+        done: 'Done',
+        progress: 'Progress',
+        elapsedAudio: 'Elapsed audio',
+        ffmpegRunning: 'ffmpeg is running',
+        conversionPlanPlaceholder: 'Conversion plan and progress events will appear here.',
+        preparingConversion: 'Preparing conversion...',
+        conversionFinished: 'Conversion finished.',
+        mode: 'Mode',
+        command: 'Command',
+        status: 'Status',
+        cachePath: 'Cache path',
+        defaultCache: 'Default bookbind cache',
+        browse: 'Browse',
+        refresh: 'Refresh',
+        clean: 'Clean',
+        entries: 'entries',
+        type: 'Type',
+        name: 'Name',
+        size: 'Size',
+        refreshCacheEmpty: 'Refresh cache to see local provider responses.',
+        cacheEmpty: 'Cache is empty.',
+        inputRequired: 'Input path is required.',
+        titleOrAuthorRequired: 'Title or author is required.',
+        selectProvider: 'Select at least one provider.',
+        selectCandidateFirst: 'Select a candidate first.',
+        saved: 'Saved',
+        removed: 'Removed',
+    },
+    ru: {
+        language: 'Язык',
+        languageEnglish: 'Английский',
+        languageRussian: 'Русский',
+        version: 'Версия',
+        desktopPreview: 'Desktop preview',
+        desktopShell: 'Desktop',
+        goBridgeConnected: 'Go bridge подключен',
+        nav: {
+            import: 'Импорт',
+            metadata: 'Метаданные',
+            convert: 'Конвертация',
+            cache: 'Кэш',
+        },
+        importSource: 'Источник',
+        inputPath: 'Путь',
+        inputPlaceholder: '/путь/к/book.mp3 или /путь/к/папке',
+        file: 'Файл',
+        folder: 'Папка',
+        inspecting: 'Проверка',
+        inspect: 'Проверить',
+        metadata: 'Метаданные',
+        metadataPlaceholder: 'Необязательный bookbind.yaml',
+        cover: 'Обложка',
+        coverPlaceholder: 'Необязательная JPG или PNG обложка',
+        durationUnknown: 'длительность неизвестна',
+        files: 'файлов',
+        channel: 'кан.',
+        chapters: 'глав',
+        metadataSearch: 'Поиск метаданных',
+        title: 'Название',
+        bookTitle: 'Название книги',
+        author: 'Автор',
+        optionalAuthor: 'Автор, необязательно',
+        searching: 'Ищем',
+        search: 'Найти',
+        noProviders: 'Нет доступных источников',
+        provider: 'Источник',
+        authors: 'Авторы',
+        year: 'Год',
+        confidence: 'Совпадение',
+        searchingProviders: 'Ищем по источникам...',
+        noCandidates: 'Пока нет вариантов.',
+        untitled: 'Без названия',
+        unknown: 'Неизвестно',
+        preview: 'Превью',
+        loading: 'Загрузка',
+        noCover: 'Нет обложки',
+        narrators: 'Чтецы',
+        series: 'Серия',
+        output: 'Выходной файл',
+        overwriteExistingFile: 'Перезаписать существующий файл',
+        saving: 'Сохраняем',
+        saveMetadata: 'Сохранить метаданные',
+        selectCandidatePreview: 'Выбери вариант, чтобы посмотреть метаданные.',
+        input: 'Источник',
+        outputPlaceholder: 'Необязательно, по умолчанию рядом с источником',
+        chapterInterval: 'Интервал глав',
+        chapterEvery: 'Интервал глав',
+        chapterIntervalPlaceholder: 'Необязательно, например 10m',
+        overwriteOutput: 'Перезаписать результат',
+        working: 'Работаем',
+        dryRun: 'План',
+        converting: 'Конвертация',
+        convert: 'Конвертировать',
+        done: 'Готово',
+        progress: 'Прогресс',
+        elapsedAudio: 'Обработано аудио',
+        ffmpegRunning: 'ffmpeg работает',
+        conversionPlanPlaceholder: 'План конвертации и прогресс появятся здесь.',
+        preparingConversion: 'Готовим конвертацию...',
+        conversionFinished: 'Конвертация завершена.',
+        mode: 'Режим',
+        command: 'Команда',
+        status: 'Статус',
+        cachePath: 'Путь к кэшу',
+        defaultCache: 'Кэш bookbind по умолчанию',
+        browse: 'Выбрать',
+        refresh: 'Обновить',
+        clean: 'Очистить',
+        entries: 'записей',
+        type: 'Тип',
+        name: 'Имя',
+        size: 'Размер',
+        refreshCacheEmpty: 'Обнови кэш, чтобы увидеть локальные ответы источников.',
+        cacheEmpty: 'Кэш пуст.',
+        inputRequired: 'Нужно выбрать путь к источнику.',
+        titleOrAuthorRequired: 'Нужно указать название или автора.',
+        selectProvider: 'Выбери хотя бы один источник.',
+        selectCandidateFirst: 'Сначала выбери вариант.',
+        saved: 'Сохранено',
+        removed: 'Удалено',
+    },
+} satisfies Record<Locale, Record<string, any>>;
+
+function initialLocale(): Locale {
+    return localStorage.getItem('bookbind-locale') === 'ru' ? 'ru' : 'en';
+}
+
+function formatEntryCount(count: number, locale: Locale, entryLabel: string) {
+    if (locale === 'ru') {
+        return `${count} ${entryLabel}`;
+    }
+    return `${count} ${entryLabel}`;
+}
+
+const localeOptions: Array<{ id: Locale; labelKey: 'languageEnglish' | 'languageRussian' }> = [
+    {id: 'en', labelKey: 'languageEnglish'},
+    {id: 'ru', labelKey: 'languageRussian'},
 ];
 
 function App() {
     const [activeScreen, setActiveScreen] = useState<Screen>('import');
+    const [locale, setLocale] = useState<Locale>(initialLocale);
     const [version, setVersion] = useState('');
     const [providers, setProviders] = useState<ProviderInfo[]>([]);
     const [inputPath, setInputPath] = useState('');
@@ -163,6 +365,12 @@ function App() {
     const [cacheStatus, setCacheStatus] = useState('');
     const [cacheError, setCacheError] = useState('');
     const [isCacheBusy, setIsCacheBusy] = useState(false);
+    const copy = translations[locale];
+
+    function changeLocale(nextLocale: Locale) {
+        setLocale(nextLocale);
+        localStorage.setItem('bookbind-locale', nextLocale);
+    }
 
     useEffect(() => {
         AppVersion().then(setVersion).catch(() => setVersion('unknown'));
@@ -190,7 +398,7 @@ function App() {
     function inspectInput() {
         const path = inputPath.trim();
         if (!path) {
-            setInspectError('Input path is required.');
+            setInspectError(copy.inputRequired);
             return;
         }
 
@@ -229,11 +437,11 @@ function App() {
 
     function searchMetadata() {
         if (!metadataTitle.trim() && !metadataAuthor.trim()) {
-            setMetadataError('Title or author is required.');
+            setMetadataError(copy.titleOrAuthorRequired);
             return;
         }
         if (providers.length > 0 && selectedProviders.length === 0) {
-            setMetadataError('Select at least one provider.');
+            setMetadataError(copy.selectProvider);
             return;
         }
 
@@ -265,7 +473,7 @@ function App() {
 
     function saveMetadata() {
         if (!selectedCandidate) {
-            setMetadataError('Select a candidate first.');
+            setMetadataError(copy.selectCandidateFirst);
             return;
         }
 
@@ -273,28 +481,28 @@ function App() {
         setMetadataError('');
         setMetadataStatus('');
         ResolveMetadata(selectedCandidate.Provider, selectedCandidate.ID, metadataOutputPath, overwriteMetadata)
-            .then((result) => setMetadataStatus(`Saved ${result.OutputPath}`))
+            .then((result) => setMetadataStatus(`${copy.saved} ${result.OutputPath}`))
             .catch((error) => setMetadataError(String(error)))
             .finally(() => setIsSavingMetadata(false));
     }
 
     function convertAudio(dryRun: boolean) {
         if (!inputPath.trim()) {
-            setConvertError('Input path is required.');
+            setConvertError(copy.inputRequired);
             return;
         }
 
         setIsConverting(true);
         setConvertError('');
         setConvertResult(null);
-        setConvertProgress(dryRun ? null : {Phase: 'preparing', Line: 'Preparing conversion...', Percent: 0, Elapsed: '', Total: ''});
-        setConvertProgressLog(dryRun ? [] : ['Preparing conversion...']);
+        setConvertProgress(dryRun ? null : {Phase: 'preparing', Line: copy.preparingConversion, Percent: 0, Elapsed: '', Total: ''});
+        setConvertProgressLog(dryRun ? [] : [copy.preparingConversion]);
         ConvertAudio(inputPath, outputPath, metadataPath, coverPath, chapterEvery, dryRun, overwriteOutput)
             .then((result) => {
                 setConvertResult(result as ConvertView);
                 if (!dryRun) {
-                    setConvertProgress({Phase: 'done', Line: 'Conversion finished.', Percent: 100, Elapsed: '', Total: ''});
-                    setConvertProgressLog((current) => [...current.slice(-120), 'Conversion finished.']);
+                    setConvertProgress({Phase: 'done', Line: copy.conversionFinished, Percent: 100, Elapsed: '', Total: ''});
+                    setConvertProgressLog((current) => [...current.slice(-120), copy.conversionFinished]);
                 }
             })
             .catch((error) => setConvertError(String(error)))
@@ -320,7 +528,7 @@ function App() {
         setCacheStatus('');
         CleanCache(cachePath)
             .then((result) => {
-                setCacheStatus(`Removed ${result.Removed} entries · ${result.RemovedSize}`);
+                setCacheStatus(`${copy.removed} ${result.Removed} ${copy.entries} · ${result.RemovedSize}`);
                 return ListCache(cachePath);
             })
             .then((result) => setCacheResult(result as CacheListView))
@@ -330,18 +538,18 @@ function App() {
 
     const convertLog = convertResult
         ? [
-            `Input: ${convertResult.InputPath}`,
-            `Files: ${convertResult.Files?.length || 0}${convertResult.TotalTime ? ` · ${convertResult.TotalTime}` : ''}`,
-            convertResult.MetadataPath ? `Metadata: ${convertResult.MetadataPath}` : '',
-            convertResult.Title ? `Title: ${convertResult.Title}` : '',
-            convertResult.CoverPath ? `Cover: ${convertResult.CoverPath}` : '',
-            convertResult.ChapterEvery ? `Chapter every: ${convertResult.ChapterEvery}` : '',
-            `Output: ${convertResult.OutputPath}`,
-            convertResult.DryRun ? 'Mode: dry-run' : 'Mode: convert',
-            convertResult.Command?.length ? `Command: ${convertResult.Command.join(' ')}` : '',
-            `Status: ${convertResult.Status}`,
+            `${copy.input}: ${convertResult.InputPath}`,
+            `${copy.files}: ${convertResult.Files?.length || 0}${convertResult.TotalTime ? ` · ${convertResult.TotalTime}` : ''}`,
+            convertResult.MetadataPath ? `${copy.metadata}: ${convertResult.MetadataPath}` : '',
+            convertResult.Title ? `${copy.title}: ${convertResult.Title}` : '',
+            convertResult.CoverPath ? `${copy.cover}: ${convertResult.CoverPath}` : '',
+            convertResult.ChapterEvery ? `${copy.chapterEvery}: ${convertResult.ChapterEvery}` : '',
+            `${copy.output}: ${convertResult.OutputPath}`,
+            convertResult.DryRun ? `${copy.mode}: ${copy.dryRun}` : `${copy.mode}: ${copy.convert}`,
+            convertResult.Command?.length ? `${copy.command}: ${convertResult.Command.join(' ')}` : '',
+            `${copy.status}: ${convertResult.Status}`,
         ].filter(Boolean).join('\n')
-        : 'Conversion plan and progress events will appear here.';
+        : copy.conversionPlanPlaceholder;
 
     return (
         <main className="app-shell">
@@ -350,82 +558,93 @@ function App() {
                     <span className="brand-mark">B</span>
                     <div>
                         <h1>bookbind</h1>
-                        <p>{version ? `Version ${version}` : 'Desktop preview'}</p>
+                        <p>{version ? `${copy.version} ${version}` : copy.desktopPreview}</p>
                     </div>
                 </div>
 
                 <nav className="nav-list" aria-label="Primary">
                     {screens.map((screen) => (
                         <button
-                            className={screen.id === activeScreen ? 'nav-item active' : 'nav-item'}
-                            key={screen.id}
-                            onClick={() => setActiveScreen(screen.id)}
+                            className={screen === activeScreen ? 'nav-item active' : 'nav-item'}
+                            key={screen}
+                            onClick={() => setActiveScreen(screen)}
                             type="button"
                         >
-                            {screen.label}
+                            {copy.nav[screen]}
                         </button>
                     ))}
                 </nav>
+
+                <label className="language-picker">
+                    {copy.language}
+                    <select onChange={(event) => changeLocale(event.target.value as Locale)} value={locale}>
+                        {localeOptions.map((option) => (
+                            <option key={option.id} value={option.id}>
+                                {copy[option.labelKey]}
+                            </option>
+                        ))}
+                    </select>
+                </label>
             </aside>
 
             <section className="workspace">
                 <header className="workspace-header">
                     <div>
-                        <p className="eyebrow">Desktop shell</p>
-                        <h2>{screens.find((screen) => screen.id === activeScreen)?.label}</h2>
+                        <p className="eyebrow">{copy.desktopShell}</p>
+                        <h2>{copy.nav[activeScreen]}</h2>
                     </div>
-                    <span className="status-pill">Go bridge connected</span>
+                    <span className="status-pill">{copy.goBridgeConnected}</span>
                 </header>
 
                 {activeScreen === 'import' && (
                     <section className="panel">
-                        <h3>Import source</h3>
+                        <h3>{copy.importSource}</h3>
                         <div className="inspect-row">
                             <label className="path-field">
-                                Input path
+                                {copy.inputPath}
                                 <input
                                     onChange={(event) => setInputPath(event.target.value)}
-                                    placeholder="/path/to/book.mp3 or /path/to/book-folder"
+                                    placeholder={copy.inputPlaceholder}
                                     value={inputPath}
                                 />
                             </label>
                             <div className="button-group">
                                 <button className="secondary-button" onClick={() => selectPath(SelectAudioFile, setInputPath)} type="button">
-                                    File
+                                    {copy.file}
                                 </button>
                                 <button className="secondary-button" onClick={() => selectPath(SelectAudioDirectory, setInputPath)} type="button">
-                                    Folder
+                                    {copy.folder}
                                 </button>
                             </div>
                             <button className="primary-button" disabled={isInspecting} onClick={inspectInput} type="button">
-                                {isInspecting ? 'Inspecting' : 'Inspect'}
+                                {isInspecting ? copy.inspecting : copy.inspect}
                             </button>
                         </div>
 
                         <div className="form-grid">
                             <label>
-                                Metadata
+                                {copy.metadata}
                                 <div className="field-with-button">
                                     <input
                                         onChange={(event) => setMetadataPath(event.target.value)}
-                                        placeholder="Optional bookbind.yaml"
+                                        placeholder={copy.metadataPlaceholder}
                                         value={metadataPath}
                                     />
                                     <button className="secondary-button" onClick={() => selectPath(SelectMetadataFile, setMetadataPath)} type="button">
-                                        Browse
+                                        {copy.browse}
                                     </button>
                                 </div>
                             </label>
                             <label>
-                                Cover
+                                {copy.cover}
                                 <div className="field-with-button">
                                     <input
                                         onChange={(event) => setCoverPath(event.target.value)}
-                                        placeholder="Optional JPG or PNG cover"
+                                        placeholder={copy.coverPlaceholder}
                                         value={coverPath}
                                     />
                                     <button className="secondary-button" onClick={() => selectPath(SelectCoverFile, setCoverPath)} type="button">
-                                        Browse
+                                        {copy.browse}
                                     </button>
                                 </div>
                             </label>
@@ -437,7 +656,7 @@ function App() {
                             <div className="inspect-result">
                                 <div className="summary-row">
                                     <span>{inspectResult.Path}</span>
-                                    <strong>{inspectResult.Files.length} files · {inspectResult.TotalTime || 'duration unknown'}</strong>
+                                    <strong>{inspectResult.Files.length} {copy.files} · {inspectResult.TotalTime || copy.durationUnknown}</strong>
                                 </div>
                                 <div className="file-list">
                                     {inspectResult.Files.map((file) => (
@@ -445,7 +664,7 @@ function App() {
                                             <div>
                                                 <strong>{file.Name || file.Path}</strong>
                                                 <p>
-                                                    {[file.Duration, file.Codec, file.Bitrate, file.Channels ? `${file.Channels} ch` : '']
+                                                    {[file.Duration, file.Codec, file.Bitrate, file.Channels ? `${file.Channels} ${copy.channel}` : '']
                                                         .filter(Boolean)
                                                         .join(' · ')}
                                                 </p>
@@ -453,7 +672,7 @@ function App() {
                                             <div className="tag-stack">
                                                 {file.Tags?.Title && <span>{file.Tags.Title}</span>}
                                                 {file.Tags?.Artist && <span>{file.Tags.Artist}</span>}
-                                                {file.Chapters > 0 && <span>{file.Chapters} chapters</span>}
+                                                {file.Chapters > 0 && <span>{file.Chapters} {copy.chapters}</span>}
                                             </div>
                                         </div>
                                     ))}
@@ -465,31 +684,31 @@ function App() {
 
                 {activeScreen === 'metadata' && (
                     <section className="panel">
-                        <h3>Metadata search</h3>
+                        <h3>{copy.metadataSearch}</h3>
                         <div className="metadata-search">
                             <label>
-                                Title
+                                {copy.title}
                                 <input
                                     onChange={(event) => setMetadataTitle(event.target.value)}
-                                    placeholder="Book title"
+                                    placeholder={copy.bookTitle}
                                     value={metadataTitle}
                                 />
                             </label>
                             <label>
-                                Author
+                                {copy.author}
                                 <input
                                     onChange={(event) => setMetadataAuthor(event.target.value)}
-                                    placeholder="Optional author"
+                                    placeholder={copy.optionalAuthor}
                                     value={metadataAuthor}
                                 />
                             </label>
                             <button className="primary-button" disabled={isSearchingMetadata} onClick={searchMetadata} type="button">
-                                {isSearchingMetadata ? 'Searching' : 'Search'}
+                                {isSearchingMetadata ? copy.searching : copy.search}
                             </button>
                         </div>
 
-                        <div className="provider-strip" aria-label="Metadata providers">
-                            {providers.length === 0 && <span>No providers available</span>}
+                        <div className="provider-strip" aria-label={copy.provider}>
+                            {providers.length === 0 && <span>{copy.noProviders}</span>}
                             {providers.map((provider) => (
                                 <label className={provider.Enabled ? 'provider-toggle' : 'provider-toggle disabled'} key={provider.Name}>
                                     <input
@@ -509,15 +728,15 @@ function App() {
                         <div className="metadata-layout">
                             <div className="table-shell">
                                 <div className="metadata-table-header">
-                                    <span>Provider</span>
-                                    <span>Title</span>
-                                    <span>Authors</span>
-                                    <span>Year</span>
-                                    <span>Confidence</span>
+                                    <span>{copy.provider}</span>
+                                    <span>{copy.title}</span>
+                                    <span>{copy.authors}</span>
+                                    <span>{copy.year}</span>
+                                    <span>{copy.confidence}</span>
                                 </div>
                                 {metadataCandidates.length === 0 && (
                                     <div className="table-empty">
-                                        {isSearchingMetadata ? 'Searching providers...' : 'No candidates yet.'}
+                                        {isSearchingMetadata ? copy.searchingProviders : copy.noCandidates}
                                     </div>
                                 )}
                                 {metadataCandidates.map((candidate) => {
@@ -530,8 +749,8 @@ function App() {
                                             type="button"
                                         >
                                             <span>{candidate.Provider}</span>
-                                            <strong>{candidate.Title || 'Untitled'}</strong>
-                                            <span>{candidate.Authors?.join(', ') || 'Unknown'}</span>
+                                            <strong>{candidate.Title || copy.untitled}</strong>
+                                            <span>{candidate.Authors?.join(', ') || copy.unknown}</span>
                                             <span>{candidate.Year || ''}</span>
                                             <span>{candidate.Confidence || ''}</span>
                                         </button>
@@ -541,8 +760,8 @@ function App() {
 
                             <aside className="preview-pane">
                                 <div className="preview-heading">
-                                    <h4>Preview</h4>
-                                    {isPreviewingMetadata && <span>Loading</span>}
+                                    <h4>{copy.preview}</h4>
+                                    {isPreviewingMetadata && <span>{copy.loading}</span>}
                                 </div>
                                 {metadataPreview ? (
                                     <div className="preview-content">
@@ -550,25 +769,25 @@ function App() {
                                             {metadataPreview.Book.Cover ? (
                                                 <img alt="" src={metadataPreview.Book.Cover} />
                                             ) : (
-                                                <span>No cover</span>
+                                                <span>{copy.noCover}</span>
                                             )}
                                         </div>
                                         <dl>
-                                            <dt>Title</dt>
+                                            <dt>{copy.title}</dt>
                                             <dd>{metadataPreview.Book.Title || '-'}</dd>
-                                            <dt>Authors</dt>
+                                            <dt>{copy.authors}</dt>
                                             <dd>{metadataPreview.Book.Authors?.join(', ') || metadataPreview.Book.Author || '-'}</dd>
-                                            <dt>Narrators</dt>
+                                            <dt>{copy.narrators}</dt>
                                             <dd>{metadataPreview.Book.Narrators?.join(', ') || metadataPreview.Book.Narrator || '-'}</dd>
-                                            <dt>Series</dt>
+                                            <dt>{copy.series}</dt>
                                             <dd>
                                                 {[metadataPreview.Book.Series, metadataPreview.Book.SeriesIndex].filter(Boolean).join(' #') || '-'}
                                             </dd>
-                                            <dt>Year</dt>
+                                            <dt>{copy.year}</dt>
                                             <dd>{metadataPreview.Book.PublishedYear || '-'}</dd>
                                         </dl>
                                         <label>
-                                            Output
+                                            {copy.output}
                                             <input
                                                 onChange={(event) => setMetadataOutputPath(event.target.value)}
                                                 placeholder="bookbind.yaml"
@@ -581,14 +800,14 @@ function App() {
                                                 onChange={(event) => setOverwriteMetadata(event.target.checked)}
                                                 type="checkbox"
                                             />
-                                            Overwrite existing file
+                                            {copy.overwriteExistingFile}
                                         </label>
                                         <button className="primary-button" disabled={isSavingMetadata} onClick={saveMetadata} type="button">
-                                            {isSavingMetadata ? 'Saving' : 'Save metadata'}
+                                            {isSavingMetadata ? copy.saving : copy.saveMetadata}
                                         </button>
                                     </div>
                                 ) : (
-                                    <div className="table-empty">Select a candidate to preview metadata.</div>
+                                    <div className="table-empty">{copy.selectCandidatePreview}</div>
                                 )}
                             </aside>
                         </div>
@@ -597,52 +816,52 @@ function App() {
 
                 {activeScreen === 'convert' && (
                     <section className="panel">
-                        <h3>Convert</h3>
+                        <h3>{copy.convert}</h3>
                         <div className="convert-grid">
                             <label>
-                                Input
+                                {copy.input}
                                 <input
                                     onChange={(event) => setInputPath(event.target.value)}
-                                    placeholder="/path/to/book.mp3 or /path/to/book-folder"
+                                    placeholder={copy.inputPlaceholder}
                                     value={inputPath}
                                 />
                             </label>
                             <label>
-                                Output
+                                {copy.output}
                                 <div className="field-with-button">
                                     <input
                                         onChange={(event) => setOutputPath(event.target.value)}
-                                        placeholder="Optional, defaults next to input"
+                                        placeholder={copy.outputPlaceholder}
                                         value={outputPath}
                                     />
                                     <button className="secondary-button" onClick={() => selectPath(SelectOutputFile, setOutputPath)} type="button">
-                                        Browse
+                                        {copy.browse}
                                     </button>
                                 </div>
                             </label>
                             <label>
-                                Chapter interval
+                                {copy.chapterInterval}
                                 <input
                                     onChange={(event) => setChapterEvery(event.target.value)}
-                                    placeholder="Optional, for example 10m"
+                                    placeholder={copy.chapterIntervalPlaceholder}
                                     value={chapterEvery}
                                 />
                             </label>
                         </div>
                         <div className="convert-grid secondary">
                             <label>
-                                Metadata
+                                {copy.metadata}
                                 <input
                                     onChange={(event) => setMetadataPath(event.target.value)}
-                                    placeholder="Optional bookbind.yaml"
+                                    placeholder={copy.metadataPlaceholder}
                                     value={metadataPath}
                                 />
                             </label>
                             <label>
-                                Cover
+                                {copy.cover}
                                 <input
                                     onChange={(event) => setCoverPath(event.target.value)}
-                                    placeholder="Optional JPG or PNG cover"
+                                    placeholder={copy.coverPlaceholder}
                                     value={coverPath}
                                 />
                             </label>
@@ -652,26 +871,26 @@ function App() {
                                     onChange={(event) => setOverwriteOutput(event.target.checked)}
                                     type="checkbox"
                                 />
-                                Overwrite output
+                                {copy.overwriteOutput}
                             </label>
                         </div>
                         <div className="action-row">
                             <button className="secondary-button" disabled={isConverting} onClick={() => convertAudio(true)} type="button">
-                                {isConverting ? 'Working' : 'Dry run'}
+                                {isConverting ? copy.working : copy.dryRun}
                             </button>
                             <button className="primary-button" disabled={isConverting} onClick={() => convertAudio(false)} type="button">
-                                {isConverting ? 'Working' : 'Convert'}
+                                {isConverting ? copy.working : copy.convert}
                             </button>
                         </div>
                         {convertError && <div className="error-box">{convertError}</div>}
                         {(isConverting || convertProgress || convertProgressLog.length > 0) && (
                             <div className="progress-panel">
                                 <div className="progress-header">
-                                    <strong>{convertProgress?.Phase === 'done' ? 'Done' : isConverting ? 'Converting' : 'Progress'}</strong>
+                                    <strong>{convertProgress?.Phase === 'done' ? copy.done : isConverting ? copy.converting : copy.progress}</strong>
                                     <span>
                                         {convertProgress?.Elapsed
-                                            ? `Elapsed audio: ${convertProgress.Elapsed}${convertProgress.Total ? ` / ${convertProgress.Total}` : ''}`
-                                            : isConverting ? 'ffmpeg is running' : ''}
+                                            ? `${copy.elapsedAudio}: ${convertProgress.Elapsed}${convertProgress.Total ? ` / ${convertProgress.Total}` : ''}`
+                                            : isConverting ? copy.ffmpegRunning : ''}
                                     </span>
                                 </div>
                                 <div className="progress-track">
@@ -688,23 +907,23 @@ function App() {
 
                 {activeScreen === 'cache' && (
                     <section className="panel">
-                        <h3>Cache</h3>
+                        <h3>{copy.nav.cache}</h3>
                         <div className="cache-toolbar">
                             <label className="path-field">
-                                Cache path
+                                {copy.cachePath}
                                 <div className="field-with-button">
                                     <input
                                         onChange={(event) => setCachePath(event.target.value)}
-                                        placeholder="Default bookbind cache"
+                                        placeholder={copy.defaultCache}
                                         value={cachePath}
                                     />
                                     <button className="secondary-button" onClick={() => selectPath(SelectCacheDirectory, setCachePath)} type="button">
-                                        Browse
+                                        {copy.browse}
                                     </button>
                                 </div>
                             </label>
                             <button className="secondary-button" disabled={isCacheBusy} onClick={refreshCache} type="button">
-                                {isCacheBusy ? 'Working' : 'Refresh'}
+                                {isCacheBusy ? copy.working : copy.refresh}
                             </button>
                             <button
                                 className="primary-button danger"
@@ -712,7 +931,7 @@ function App() {
                                 onClick={cleanCache}
                                 type="button"
                             >
-                                Clean
+                                {copy.clean}
                             </button>
                         </div>
                         {cacheError && <div className="error-box">{cacheError}</div>}
@@ -720,17 +939,17 @@ function App() {
                         {cacheResult && (
                             <div className="summary-row">
                                 <span>{cacheResult.Path}</span>
-                                <strong>{cacheResult.Entries.length} entries · {cacheResult.Size}</strong>
+                                <strong>{formatEntryCount(cacheResult.Entries.length, locale, copy.entries)} · {cacheResult.Size}</strong>
                             </div>
                         )}
                         <div className="table-shell">
                             <div className="cache-table-header">
-                                <span>Type</span>
-                                <span>Name</span>
-                                <span>Size</span>
+                                <span>{copy.type}</span>
+                                <span>{copy.name}</span>
+                                <span>{copy.size}</span>
                             </div>
-                            {!cacheResult && <div className="table-empty">Refresh cache to see local provider responses.</div>}
-                            {cacheResult && cacheResult.Entries.length === 0 && <div className="table-empty">Cache is empty.</div>}
+                            {!cacheResult && <div className="table-empty">{copy.refreshCacheEmpty}</div>}
+                            {cacheResult && cacheResult.Entries.length === 0 && <div className="table-empty">{copy.cacheEmpty}</div>}
                             {cacheResult?.Entries.map((entry) => (
                                 <div className="cache-row" key={entry.Path}>
                                     <span>{entry.Kind}</span>

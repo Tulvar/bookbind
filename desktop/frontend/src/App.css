@@ -48,6 +48,23 @@
     gap: 6px;
 }
 
+.language-picker {
+    border-top: 1px solid #e5eaf0;
+    margin-top: 22px;
+    padding-top: 18px;
+}
+
+select {
+    appearance: none;
+    background: #ffffff;
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+    color: #1d2733;
+    font: inherit;
+    padding: 9px 10px;
+    width: 100%;
+}
+
 .nav-item {
     background: transparent;
     border: 0;
