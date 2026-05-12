@@ -1460,9 +1460,8 @@ CI нужен обязательно, даже если не в самый пе�
 - integration tests с короткими test MP3
 - проверка ffmpeg/ffprobe, если доступны
 - frontend lint/test
-- Wails build artifacts
 - [x] release workflow для CLI Windows/macOS/Linux
-- Wails release artifacts для desktop UI
+- [x] Wails release artifacts для desktop UI
 ```
 
 CI не должен зависеть от внешних metadata providers. Провайдеры тестируются через
