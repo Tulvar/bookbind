@@ -34,6 +34,10 @@ export function ListCache(arg1) {
   return window['go']['main']['App']['ListCache'](arg1);
 }
 
+export function PrepareConversion(arg1, arg2, arg3) {
+  return window['go']['main']['App']['PrepareConversion'](arg1, arg2, arg3);
+}
+
 export function PreviewMetadata(arg1, arg2) {
   return window['go']['main']['App']['PreviewMetadata'](arg1, arg2);
 }

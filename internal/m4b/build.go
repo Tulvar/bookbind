@@ -223,9 +223,24 @@ func (b *Builder) command(req BuildRequest) ([]string, func(), error) {
 
 func singleFileChapters(file audio.File, chapterEvery time.Duration) ([]chapters.Chapter, error) {
 	if chapterEvery == 0 {
-		return nil, nil
+		return embeddedChapters(file.Chapters), nil
 	}
 	return chapters.Synthetic(file.Duration, chapterEvery)
+}
+
+func embeddedChapters(values []audio.Chapter) []chapters.Chapter {
+	if len(values) == 0 {
+		return nil
+	}
+	result := make([]chapters.Chapter, 0, len(values))
+	for _, value := range values {
+		result = append(result, chapters.Chapter{
+			Title: value.Title,
+			Start: value.Start,
+			End:   value.End,
+		})
+	}
+	return result
 }
 
 func appendCoverArgs(args []string, coverPath string) []string {

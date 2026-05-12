@@ -2,8 +2,11 @@ package app
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 	"io"
+	"net/http"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -58,15 +61,11 @@ func (a *App) Convert(ctx context.Context, req ConvertRequest) (ConvertResult, e
 		return ConvertResult{}, fmt.Errorf("m4b builder is not configured")
 	}
 
-	book := req.Metadata
-	if book.Empty() {
-		loaded, err := loadMetadata(req.MetadataPath)
-		if err != nil {
-			return ConvertResult{}, err
-		}
-		book = loaded
+	book, err := a.prepareMetadata(input, req.MetadataPath, req.Metadata)
+	if err != nil {
+		return ConvertResult{}, err
 	}
-	coverPath, err := resolveCoverPath(req.CoverPath, req.MetadataPath, book)
+	coverPath, err := resolveCoverPath(ctx, req.CoverPath, req.MetadataPath, book)
 	if err != nil {
 		return ConvertResult{}, err
 	}
@@ -108,12 +107,14 @@ func loadMetadata(path string) (metadata.Book, error) {
 	return metadata.LoadYAML(path)
 }
 
-func resolveCoverPath(cliCoverPath, metadataPath string, book metadata.Book) (string, error) {
+var cacheDir = CacheDir
+
+func resolveCoverPath(ctx context.Context, cliCoverPath, metadataPath string, book metadata.Book) (string, error) {
 	coverPath := strings.TrimSpace(cliCoverPath)
 	if coverPath == "" {
 		coverPath = strings.TrimSpace(book.Cover)
 		if isRemoteURL(coverPath) {
-			return "", nil
+			return downloadCover(ctx, coverPath)
 		}
 		if coverPath != "" && metadataPath != "" && !filepath.IsAbs(coverPath) {
 			coverPath = filepath.Join(filepath.Dir(metadataPath), coverPath)
@@ -137,6 +138,64 @@ func resolveCoverPath(cliCoverPath, metadataPath string, book metadata.Book) (st
 	default:
 		return "", fmt.Errorf("cover must be .jpg, .jpeg, or .png: %s", coverPath)
 	}
+}
+
+func downloadCover(ctx context.Context, rawURL string) (string, error) {
+	cacheRoot, err := cacheDir()
+	if err != nil {
+		return "", err
+	}
+	coverDir := filepath.Join(cacheRoot, "covers")
+	if err := os.MkdirAll(coverDir, 0o755); err != nil {
+		return "", err
+	}
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, rawURL, nil)
+	if err != nil {
+		return "", fmt.Errorf("cover url: %w", err)
+	}
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return "", fmt.Errorf("download cover: %w", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return "", fmt.Errorf("download cover: unexpected status %s", resp.Status)
+	}
+
+	path := filepath.Join(coverDir, cachedCoverName(rawURL, resp.Header.Get("Content-Type")))
+	file, err := os.Create(path)
+	if err != nil {
+		return "", err
+	}
+	defer file.Close()
+	if _, err := io.Copy(file, resp.Body); err != nil {
+		return "", fmt.Errorf("save cover: %w", err)
+	}
+	return path, nil
+}
+
+func cachedCoverName(rawURL, contentType string) string {
+	sum := sha256.Sum256([]byte(rawURL))
+	ext := strings.ToLower(filepath.Ext(parsedURLPath(rawURL)))
+	switch ext {
+	case ".jpg", ".jpeg", ".png":
+	default:
+		if strings.Contains(strings.ToLower(contentType), "png") {
+			ext = ".png"
+		} else {
+			ext = ".jpg"
+		}
+	}
+	return hex.EncodeToString(sum[:]) + ext
+}
+
+func parsedURLPath(rawURL string) string {
+	parsed, err := url.Parse(rawURL)
+	if err != nil {
+		return rawURL
+	}
+	return parsed.Path
 }
 
 func isRemoteURL(value string) bool {

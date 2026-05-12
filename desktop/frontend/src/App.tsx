@@ -10,6 +10,7 @@ import {
     InspectPath,
     ListCache,
     PreviewMetadata,
+    PrepareConversion,
     ResolveMetadata,
     SearchMetadata,
     SelectAudioDirectory,
@@ -86,6 +87,12 @@ type BookMetadataView = {
 type MetadataPreviewView = {
     Candidate: MetadataCandidateView;
     Book: BookMetadataView;
+};
+
+type ConversionPreparationView = {
+    Book: BookMetadataView;
+    Missing: string[];
+    Files: number;
 };
 
 type ConvertView = {
@@ -176,6 +183,7 @@ const translations = {
         noCover: 'No cover',
         narrators: 'Narrators',
         series: 'Series',
+        genre: 'Genre',
         output: 'Output',
         overwriteExistingFile: 'Overwrite existing file',
         saving: 'Saving',
@@ -188,6 +196,12 @@ const translations = {
         metadataReadyText: 'Use this metadata for conversion without writing bookbind.yaml, or save it as YAML.',
         usingInlineMetadata: 'Using selected metadata for conversion',
         selectedMetadata: 'Selected metadata',
+        preparingMetadata: 'Collecting metadata',
+        reviewBeforeConvert: 'Review metadata before conversion',
+        missingMetadataHint: 'Bookbind filled what it could. Add or adjust missing fields before conversion starts.',
+        startConversion: 'Start conversion',
+        authorsInput: 'Authors',
+        narrator: 'Narrator',
         selectCandidatePreview: 'Select a candidate to preview metadata.',
         input: 'Input',
         outputPlaceholder: 'Optional, defaults next to input',
@@ -280,6 +294,7 @@ const translations = {
         noCover: 'Нет обложки',
         narrators: 'Чтецы',
         series: 'Серия',
+        genre: 'Жанр',
         output: 'Выходной файл',
         overwriteExistingFile: 'Перезаписать существующий файл',
         saving: 'Сохраняем',
@@ -292,6 +307,12 @@ const translations = {
         metadataReadyText: 'Можно использовать эти метаданные в конвертации без сохранения bookbind.yaml или сохранить YAML-файл.',
         usingInlineMetadata: 'Используются выбранные метаданные',
         selectedMetadata: 'Выбранные метаданные',
+        preparingMetadata: 'Собираем метаданные',
+        reviewBeforeConvert: 'Проверь метаданные перед конвертацией',
+        missingMetadataHint: 'Bookbind заполнил всё, что смог. Дополни или поправь поля перед стартом конвертации.',
+        startConversion: 'Начать конвертацию',
+        authorsInput: 'Авторы',
+        narrator: 'Чтец',
         selectCandidatePreview: 'Выбери вариант, чтобы посмотреть метаданные.',
         input: 'Источник',
         outputPlaceholder: 'Необязательно, по умолчанию рядом с источником',
@@ -384,6 +405,10 @@ function App() {
     const [convertResult, setConvertResult] = useState<ConvertView | null>(null);
     const [convertError, setConvertError] = useState('');
     const [isConverting, setIsConverting] = useState(false);
+    const [isPreparingConversion, setIsPreparingConversion] = useState(false);
+    const [showConversionPreparation, setShowConversionPreparation] = useState(false);
+    const [preparedMetadata, setPreparedMetadata] = useState<BookMetadataView | null>(null);
+    const [preparedMissing, setPreparedMissing] = useState<string[]>([]);
     const [currentConversionDryRun, setCurrentConversionDryRun] = useState(false);
     const [convertProgress, setConvertProgress] = useState<ConvertProgressEvent | null>(null);
     const [convertProgressLog, setConvertProgressLog] = useState<string[]>([]);
@@ -534,14 +559,34 @@ function App() {
             return;
         }
 
+        if (!dryRun) {
+            setIsPreparingConversion(true);
+            setConvertError('');
+            const inlineBook = conversionMetadata || emptyBookMetadata();
+            PrepareConversion(inputPath, metadataPath, inlineBook)
+                .then((result) => {
+                    const preparation = result as ConversionPreparationView;
+                    setPreparedMetadata(preparation.Book);
+                    setPreparedMissing(preparation.Missing || []);
+                    setShowConversionPreparation(true);
+                })
+                .catch((error) => setConvertError(String(error)))
+                .finally(() => setIsPreparingConversion(false));
+            return;
+        }
+
+        executeConversion(dryRun, conversionMetadata);
+    }
+
+    function executeConversion(dryRun: boolean, metadataOverride: BookMetadataView | null) {
         setIsConverting(true);
         setCurrentConversionDryRun(dryRun);
         setConvertError('');
         setConvertResult(null);
         setConvertProgress(dryRun ? null : {Phase: 'preparing', Line: copy.preparingConversion, Percent: 0, Elapsed: '', Total: ''});
         setConvertProgressLog(dryRun ? [] : [copy.preparingConversion]);
-        const convertAction = conversionMetadata
-            ? ConvertAudioWithMetadata(inputPath, outputPath, conversionMetadata, coverPath, chapterEvery, dryRun, overwriteOutput)
+        const convertAction = metadataOverride
+            ? ConvertAudioWithMetadata(inputPath, outputPath, metadataOverride, coverPath, chapterEvery, dryRun, overwriteOutput)
             : ConvertAudio(inputPath, outputPath, metadataPath, coverPath, chapterEvery, dryRun, overwriteOutput);
         convertAction
             .then((result) => {
@@ -560,6 +605,19 @@ function App() {
                 setConvertProgressLog((current) => [...current.slice(-120), message]);
             })
             .finally(() => setIsConverting(false));
+    }
+
+    function confirmPreparedConversion() {
+        if (!preparedMetadata) {
+            return;
+        }
+        setConversionMetadata(preparedMetadata);
+        setShowConversionPreparation(false);
+        executeConversion(false, preparedMetadata);
+    }
+
+    function updatePreparedMetadata(patch: Partial<BookMetadataView>) {
+        setPreparedMetadata((current) => current ? {...current, ...patch} : current);
     }
 
     function cancelConvert() {
@@ -638,6 +696,77 @@ function App() {
                             </button>
                             <button className="secondary-button" onClick={() => setShowMetadataPrompt(false)} type="button">
                                 {copy.close}
+                            </button>
+                        </div>
+                    </section>
+                </div>
+            )}
+            {showConversionPreparation && preparedMetadata && (
+                <div className="modal-backdrop" role="presentation">
+                    <section aria-modal="true" className="modal wide-modal" role="dialog">
+                        <h3>{copy.reviewBeforeConvert}</h3>
+                        <p>{copy.missingMetadataHint}</p>
+                        {preparedMissing.length > 0 && (
+                            <div className="missing-strip">
+                                {preparedMissing.map((field) => <span key={field}>{field}</span>)}
+                            </div>
+                        )}
+                        <div className="metadata-form">
+                            <label>
+                                {copy.title}
+                                <input
+                                    onChange={(event) => updatePreparedMetadata({Title: event.target.value})}
+                                    value={preparedMetadata.Title}
+                                />
+                            </label>
+                            <label>
+                                {copy.authorsInput}
+                                <input
+                                    onChange={(event) => updatePreparedMetadata({
+                                        Author: event.target.value,
+                                        Authors: event.target.value.split(',').map((item) => item.trim()).filter(Boolean),
+                                    })}
+                                    value={preparedMetadata.Authors?.join(', ') || preparedMetadata.Author}
+                                />
+                            </label>
+                            <label>
+                                {copy.narrator}
+                                <input
+                                    onChange={(event) => updatePreparedMetadata({
+                                        Narrator: event.target.value,
+                                        Narrators: event.target.value.split(',').map((item) => item.trim()).filter(Boolean),
+                                    })}
+                                    value={preparedMetadata.Narrators?.join(', ') || preparedMetadata.Narrator}
+                                />
+                            </label>
+                            <label>
+                                {copy.language}
+                                <input
+                                    onChange={(event) => updatePreparedMetadata({Language: event.target.value})}
+                                    value={preparedMetadata.Language}
+                                />
+                            </label>
+                            <label>
+                                {copy.genre}
+                                <input
+                                    onChange={(event) => updatePreparedMetadata({Genre: event.target.value})}
+                                    value={preparedMetadata.Genre}
+                                />
+                            </label>
+                            <label>
+                                {copy.cover}
+                                <input
+                                    onChange={(event) => updatePreparedMetadata({Cover: event.target.value})}
+                                    value={preparedMetadata.Cover}
+                                />
+                            </label>
+                        </div>
+                        <div className="modal-actions">
+                            <button className="secondary-button" onClick={() => setShowConversionPreparation(false)} type="button">
+                                {copy.cancel}
+                            </button>
+                            <button className="primary-button" onClick={confirmPreparedConversion} type="button">
+                                {copy.startConversion}
                             </button>
                         </div>
                     </section>
@@ -985,7 +1114,7 @@ function App() {
                             </div>
                         )}
                         <div className="action-row">
-                            <button className="secondary-button" disabled={isConverting} onClick={() => convertAudio(true)} type="button">
+                            <button className="secondary-button" disabled={isConverting || isPreparingConversion} onClick={() => convertAudio(true)} type="button">
                                 {isConverting ? copy.working : copy.dryRun}
                             </button>
                             {isConverting && !currentConversionDryRun && (
@@ -993,8 +1122,8 @@ function App() {
                                     {copy.cancel}
                                 </button>
                             )}
-                            <button className="primary-button" disabled={isConverting} onClick={() => convertAudio(false)} type="button">
-                                {isConverting ? copy.working : copy.convert}
+                            <button className="primary-button" disabled={isConverting || isPreparingConversion} onClick={() => convertAudio(false)} type="button">
+                                {isPreparingConversion ? copy.preparingMetadata : isConverting ? copy.working : copy.convert}
                             </button>
                         </div>
                         {convertError && <div className="error-box">{convertError}</div>}
@@ -1079,6 +1208,25 @@ function App() {
             </section>
         </main>
     );
+}
+
+function emptyBookMetadata(): BookMetadataView {
+    return {
+        Title: '',
+        Subtitle: '',
+        Authors: [],
+        Author: '',
+        Narrators: [],
+        Narrator: '',
+        Series: '',
+        SeriesIndex: '',
+        Language: '',
+        Genre: '',
+        Description: '',
+        Publisher: '',
+        PublishedYear: 0,
+        Cover: '',
+    };
 }
 
 export default App;

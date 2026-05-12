@@ -136,6 +136,11 @@ select {
     width: min(100%, 520px);
 }
 
+.wide-modal {
+    max-width: 720px;
+    width: min(100%, 720px);
+}
+
 .modal h3,
 .modal p {
     margin: 0;
@@ -165,6 +170,27 @@ select {
     flex-wrap: wrap;
     gap: 10px;
     justify-content: flex-end;
+}
+
+.missing-strip {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.missing-strip span {
+    background: #fff7ed;
+    border: 1px solid #fed7aa;
+    border-radius: 999px;
+    color: #9a3412;
+    font-size: 13px;
+    padding: 5px 9px;
+}
+
+.metadata-form {
+    display: grid;
+    gap: 12px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 .panel {
@@ -724,6 +750,10 @@ dd {
     .selected-metadata {
         align-items: stretch;
         flex-direction: column;
+    }
+
+    .metadata-form {
+        grid-template-columns: 1fr;
     }
 
     .tag-stack {

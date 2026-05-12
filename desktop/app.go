@@ -214,6 +214,12 @@ type MetadataResolveView struct {
 	Book       BookMetadataView
 }
 
+type ConversionPreparationView struct {
+	Book    BookMetadataView
+	Missing []string
+	Files   int
+}
+
 func (a *App) SearchMetadata(title, author string, providerNames []string) (MetadataSearchView, error) {
 	result, err := a.core.SearchMetadata(a.dialogContext(), coreapp.SearchRequest{
 		Title:     strings.TrimSpace(title),
@@ -261,6 +267,22 @@ func (a *App) ResolveMetadata(provider, id, outputPath string, overwrite bool) (
 		OutputPath: result.OutputPath,
 		Candidate:  candidateView(result.Candidate),
 		Book:       bookView(result.Book),
+	}, nil
+}
+
+func (a *App) PrepareConversion(inputPath, metadataPath string, inlineMetadata BookMetadataView) (ConversionPreparationView, error) {
+	result, err := a.core.PrepareConversion(a.dialogContext(), coreapp.PrepareConversionRequest{
+		InputPath:    strings.TrimSpace(inputPath),
+		MetadataPath: strings.TrimSpace(metadataPath),
+		Metadata:     bookFromView(inlineMetadata),
+	})
+	if err != nil {
+		return ConversionPreparationView{}, err
+	}
+	return ConversionPreparationView{
+		Book:    bookView(result.Metadata),
+		Missing: result.Missing,
+		Files:   len(result.Input.Files),
 	}, nil
 }
 

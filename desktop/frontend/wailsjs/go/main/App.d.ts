@@ -19,6 +19,8 @@ export function InspectPath(arg1:string):Promise<main.InspectView>;
 
 export function ListCache(arg1:string):Promise<main.CacheListView>;
 
+export function PrepareConversion(arg1:string,arg2:string,arg3:main.BookMetadataView):Promise<main.ConversionPreparationView>;
+
 export function PreviewMetadata(arg1:string,arg2:string):Promise<main.MetadataPreviewView>;
 
 export function ResolveMetadata(arg1:string,arg2:string,arg3:string,arg4:boolean):Promise<main.MetadataResolveView>;
