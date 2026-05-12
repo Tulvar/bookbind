@@ -1,9 +1,12 @@
-import {useEffect, useMemo, useState} from 'react';
+import {useEffect, useState} from 'react';
 import './App.css';
 import {
     AppVersion,
     AvailableProviders,
     InspectPath,
+    PreviewMetadata,
+    ResolveMetadata,
+    SearchMetadata,
     SelectAudioDirectory,
     SelectAudioFile,
     SelectCoverFile,
@@ -40,6 +43,42 @@ type InspectView = {
     TotalTime: string;
 };
 
+type MetadataCandidateView = {
+    Provider: string;
+    ID: string;
+    Title: string;
+    Authors: string[];
+    Narrators: string[];
+    Series: string;
+    SeriesIndex: string;
+    Year: number;
+    Duration: string;
+    CoverURL: string;
+    Confidence: string;
+};
+
+type BookMetadataView = {
+    Title: string;
+    Subtitle: string;
+    Authors: string[];
+    Author: string;
+    Narrators: string[];
+    Narrator: string;
+    Series: string;
+    SeriesIndex: string;
+    Language: string;
+    Genre: string;
+    Description: string;
+    Publisher: string;
+    PublishedYear: number;
+    Cover: string;
+};
+
+type MetadataPreviewView = {
+    Candidate: MetadataCandidateView;
+    Book: BookMetadataView;
+};
+
 const screens: Array<{ id: Screen; label: string }> = [
     {id: 'import', label: 'Import'},
     {id: 'metadata', label: 'Metadata'},
@@ -57,16 +96,32 @@ function App() {
     const [inspectResult, setInspectResult] = useState<InspectView | null>(null);
     const [inspectError, setInspectError] = useState('');
     const [isInspecting, setIsInspecting] = useState(false);
+    const [metadataTitle, setMetadataTitle] = useState('');
+    const [metadataAuthor, setMetadataAuthor] = useState('');
+    const [selectedProviders, setSelectedProviders] = useState<string[]>([]);
+    const [metadataCandidates, setMetadataCandidates] = useState<MetadataCandidateView[]>([]);
+    const [selectedCandidate, setSelectedCandidate] = useState<MetadataCandidateView | null>(null);
+    const [metadataPreview, setMetadataPreview] = useState<MetadataPreviewView | null>(null);
+    const [metadataOutputPath, setMetadataOutputPath] = useState('bookbind.yaml');
+    const [overwriteMetadata, setOverwriteMetadata] = useState(false);
+    const [metadataStatus, setMetadataStatus] = useState('');
+    const [metadataError, setMetadataError] = useState('');
+    const [isSearchingMetadata, setIsSearchingMetadata] = useState(false);
+    const [isPreviewingMetadata, setIsPreviewingMetadata] = useState(false);
+    const [isSavingMetadata, setIsSavingMetadata] = useState(false);
 
     useEffect(() => {
         AppVersion().then(setVersion).catch(() => setVersion('unknown'));
-        AvailableProviders().then(setProviders).catch(() => setProviders([]));
+        AvailableProviders()
+            .then((availableProviders) => {
+                setProviders(availableProviders);
+                setSelectedProviders(availableProviders.filter((provider) => provider.Enabled).map((provider) => provider.Name));
+            })
+            .catch(() => {
+                setProviders([]);
+                setSelectedProviders([]);
+            });
     }, []);
-
-    const providerNames = useMemo(
-        () => providers.filter((provider) => provider.Enabled).map((provider) => provider.Name).join(', '),
-        [providers],
-    );
 
     function inspectInput() {
         const path = inputPath.trim();
@@ -95,6 +150,66 @@ function App() {
                 }
             })
             .catch((error) => setInspectError(String(error)));
+    }
+
+    function toggleProvider(providerName: string) {
+        setSelectedProviders((current) => {
+            if (current.includes(providerName)) {
+                return current.filter((name) => name !== providerName);
+            }
+            return [...current, providerName];
+        });
+    }
+
+    function searchMetadata() {
+        if (!metadataTitle.trim() && !metadataAuthor.trim()) {
+            setMetadataError('Title or author is required.');
+            return;
+        }
+        if (providers.length > 0 && selectedProviders.length === 0) {
+            setMetadataError('Select at least one provider.');
+            return;
+        }
+
+        setIsSearchingMetadata(true);
+        setMetadataError('');
+        setMetadataStatus('');
+        setSelectedCandidate(null);
+        setMetadataPreview(null);
+        SearchMetadata(metadataTitle, metadataAuthor, selectedProviders)
+            .then((result) => setMetadataCandidates((result.Candidates || []) as MetadataCandidateView[]))
+            .catch((error) => {
+                setMetadataCandidates([]);
+                setMetadataError(String(error));
+            })
+            .finally(() => setIsSearchingMetadata(false));
+    }
+
+    function selectMetadataCandidate(candidate: MetadataCandidateView) {
+        setSelectedCandidate(candidate);
+        setMetadataError('');
+        setMetadataStatus('');
+        setMetadataPreview(null);
+        setIsPreviewingMetadata(true);
+        PreviewMetadata(candidate.Provider, candidate.ID)
+            .then((result) => setMetadataPreview(result as MetadataPreviewView))
+            .catch((error) => setMetadataError(String(error)))
+            .finally(() => setIsPreviewingMetadata(false));
+    }
+
+    function saveMetadata() {
+        if (!selectedCandidate) {
+            setMetadataError('Select a candidate first.');
+            return;
+        }
+
+        setIsSavingMetadata(true);
+        setMetadataError('');
+        setMetadataStatus('');
+        ResolveMetadata(selectedCandidate.Provider, selectedCandidate.ID, metadataOutputPath, overwriteMetadata)
+            .then((result) => setMetadataStatus(`Saved ${result.OutputPath}`))
+            .catch((error) => setMetadataError(String(error)))
+            .finally(() => setIsSavingMetadata(false));
     }
 
     return (
@@ -220,18 +335,131 @@ function App() {
                 {activeScreen === 'metadata' && (
                     <section className="panel">
                         <h3>Metadata search</h3>
-                        <div className="summary-row">
-                            <span>Providers</span>
-                            <strong>{providerNames || 'No providers available'}</strong>
+                        <div className="metadata-search">
+                            <label>
+                                Title
+                                <input
+                                    onChange={(event) => setMetadataTitle(event.target.value)}
+                                    placeholder="Book title"
+                                    value={metadataTitle}
+                                />
+                            </label>
+                            <label>
+                                Author
+                                <input
+                                    onChange={(event) => setMetadataAuthor(event.target.value)}
+                                    placeholder="Optional author"
+                                    value={metadataAuthor}
+                                />
+                            </label>
+                            <button className="primary-button" disabled={isSearchingMetadata} onClick={searchMetadata} type="button">
+                                {isSearchingMetadata ? 'Searching' : 'Search'}
+                            </button>
                         </div>
-                        <div className="table-shell">
-                            <div className="table-header">
-                                <span>Provider</span>
-                                <span>Title</span>
-                                <span>Authors</span>
-                                <span>Confidence</span>
+
+                        <div className="provider-strip" aria-label="Metadata providers">
+                            {providers.length === 0 && <span>No providers available</span>}
+                            {providers.map((provider) => (
+                                <label className={provider.Enabled ? 'provider-toggle' : 'provider-toggle disabled'} key={provider.Name}>
+                                    <input
+                                        checked={selectedProviders.includes(provider.Name)}
+                                        disabled={!provider.Enabled}
+                                        onChange={() => toggleProvider(provider.Name)}
+                                        type="checkbox"
+                                    />
+                                    {provider.Name}
+                                </label>
+                            ))}
+                        </div>
+
+                        {metadataError && <div className="error-box">{metadataError}</div>}
+                        {metadataStatus && <div className="success-box">{metadataStatus}</div>}
+
+                        <div className="metadata-layout">
+                            <div className="table-shell">
+                                <div className="metadata-table-header">
+                                    <span>Provider</span>
+                                    <span>Title</span>
+                                    <span>Authors</span>
+                                    <span>Year</span>
+                                    <span>Confidence</span>
+                                </div>
+                                {metadataCandidates.length === 0 && (
+                                    <div className="table-empty">
+                                        {isSearchingMetadata ? 'Searching providers...' : 'No candidates yet.'}
+                                    </div>
+                                )}
+                                {metadataCandidates.map((candidate) => {
+                                    const selected = selectedCandidate?.Provider === candidate.Provider && selectedCandidate?.ID === candidate.ID;
+                                    return (
+                                        <button
+                                            className={selected ? 'candidate-row selected' : 'candidate-row'}
+                                            key={`${candidate.Provider}:${candidate.ID}`}
+                                            onClick={() => selectMetadataCandidate(candidate)}
+                                            type="button"
+                                        >
+                                            <span>{candidate.Provider}</span>
+                                            <strong>{candidate.Title || 'Untitled'}</strong>
+                                            <span>{candidate.Authors?.join(', ') || 'Unknown'}</span>
+                                            <span>{candidate.Year || ''}</span>
+                                            <span>{candidate.Confidence || ''}</span>
+                                        </button>
+                                    );
+                                })}
                             </div>
-                            <div className="table-empty">Search and candidate selection land here next.</div>
+
+                            <aside className="preview-pane">
+                                <div className="preview-heading">
+                                    <h4>Preview</h4>
+                                    {isPreviewingMetadata && <span>Loading</span>}
+                                </div>
+                                {metadataPreview ? (
+                                    <div className="preview-content">
+                                        <div className="cover-preview">
+                                            {metadataPreview.Book.Cover ? (
+                                                <img alt="" src={metadataPreview.Book.Cover} />
+                                            ) : (
+                                                <span>No cover</span>
+                                            )}
+                                        </div>
+                                        <dl>
+                                            <dt>Title</dt>
+                                            <dd>{metadataPreview.Book.Title || '-'}</dd>
+                                            <dt>Authors</dt>
+                                            <dd>{metadataPreview.Book.Authors?.join(', ') || metadataPreview.Book.Author || '-'}</dd>
+                                            <dt>Narrators</dt>
+                                            <dd>{metadataPreview.Book.Narrators?.join(', ') || metadataPreview.Book.Narrator || '-'}</dd>
+                                            <dt>Series</dt>
+                                            <dd>
+                                                {[metadataPreview.Book.Series, metadataPreview.Book.SeriesIndex].filter(Boolean).join(' #') || '-'}
+                                            </dd>
+                                            <dt>Year</dt>
+                                            <dd>{metadataPreview.Book.PublishedYear || '-'}</dd>
+                                        </dl>
+                                        <label>
+                                            Output
+                                            <input
+                                                onChange={(event) => setMetadataOutputPath(event.target.value)}
+                                                placeholder="bookbind.yaml"
+                                                value={metadataOutputPath}
+                                            />
+                                        </label>
+                                        <label className="checkbox-line">
+                                            <input
+                                                checked={overwriteMetadata}
+                                                onChange={(event) => setOverwriteMetadata(event.target.checked)}
+                                                type="checkbox"
+                                            />
+                                            Overwrite existing file
+                                        </label>
+                                        <button className="primary-button" disabled={isSavingMetadata} onClick={saveMetadata} type="button">
+                                            {isSavingMetadata ? 'Saving' : 'Save metadata'}
+                                        </button>
+                                    </div>
+                                ) : (
+                                    <div className="table-empty">Select a candidate to preview metadata.</div>
+                                )}
+                            </aside>
                         </div>
                     </section>
                 )}
