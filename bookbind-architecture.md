@@ -1336,7 +1336,7 @@ BuildM4B(ctx, request)
 4. [x] Convert screen: output path, dry-run, convert log
 5. [x] Cache screen: list/clean
 6. [x] CI smoke для frontend lint/build
-7. release workflow для desktop artifacts
+7. [x] release workflow для desktop artifacts
 ```
 
 UI не должен напрямую знать про ffmpeg, scoring, merge-правила, парсинг EPUB
