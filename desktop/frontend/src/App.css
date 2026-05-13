@@ -48,6 +48,10 @@
     gap: 6px;
 }
 
+.workflow-list {
+    gap: 8px;
+}
+
 .language-picker {
     border-top: 1px solid #e5eaf0;
     margin-top: 22px;
@@ -66,15 +70,19 @@ select {
 }
 
 .nav-item {
+    align-items: center;
     background: transparent;
     border: 0;
     border-radius: 6px;
     color: #334155;
     cursor: pointer;
+    display: flex;
+    gap: 10px;
     font: inherit;
-    height: 40px;
-    padding: 0 12px;
+    min-height: 46px;
+    padding: 8px 12px;
     text-align: left;
+    width: 100%;
 }
 
 .nav-item:hover {
@@ -85,6 +93,53 @@ select {
     background: #dfeaff;
     color: #163d7a;
     font-weight: 700;
+}
+
+.nav-item:disabled {
+    color: #94a3b8;
+    cursor: default;
+}
+
+.nav-item:disabled:hover {
+    background: transparent;
+}
+
+.workflow-item small {
+    color: #647184;
+    display: block;
+    font-size: 12px;
+    font-weight: 500;
+    margin-top: 2px;
+}
+
+.workflow-item.locked small {
+    color: #94a3b8;
+}
+
+.step-number {
+    align-items: center;
+    background: #e8eef7;
+    border-radius: 999px;
+    color: #1f3f75;
+    display: inline-flex;
+    flex: 0 0 auto;
+    font-size: 13px;
+    font-weight: 700;
+    height: 26px;
+    justify-content: center;
+    width: 26px;
+}
+
+.workflow-item.active .step-number,
+.workflow-item.completed .step-number {
+    background: #2454a6;
+    color: #ffffff;
+}
+
+.utility-item {
+    border-top: 1px solid #e5eaf0;
+    margin-top: 10px;
+    padding-top: 14px;
 }
 
 .workspace {
@@ -203,6 +258,17 @@ select {
 .panel h3 {
     font-size: 18px;
     margin: 0 0 18px;
+}
+
+.step-intro {
+    color: #647184;
+    margin: -6px 0 18px;
+}
+
+.continue-row {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: 16px;
 }
 
 .form-grid {

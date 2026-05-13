@@ -132,7 +132,7 @@ type CacheListView = {
     Size: string;
 };
 
-const screens: Screen[] = ['import', 'metadata', 'convert', 'cache'];
+const workflowScreens: Screen[] = ['import', 'metadata', 'convert'];
 
 const translations = {
     en: {
@@ -144,11 +144,18 @@ const translations = {
         desktopShell: 'Desktop shell',
         goBridgeConnected: 'Go bridge connected',
         nav: {
-            import: 'Import',
-            metadata: 'Metadata',
+            import: 'Book',
+            metadata: 'Enrich',
             convert: 'Convert',
             cache: 'Cache',
         },
+        workflow: 'Workflow',
+        step: 'Step',
+        continueToMetadata: 'Continue to metadata',
+        continueToConvert: 'Continue to conversion',
+        chooseBookFirst: 'Choose an audiobook first.',
+        metadataStepIntro: 'Search external sources, preview a candidate, then use it for conversion.',
+        convertStepIntro: 'Review the selected book and run the final M4B conversion.',
         importSource: 'Import source',
         inputPath: 'Input path',
         inputPlaceholder: '/path/to/book.mp3 or /path/to/book-folder',
@@ -260,11 +267,18 @@ const translations = {
         desktopShell: 'Desktop',
         goBridgeConnected: 'Go bridge подключен',
         nav: {
-            import: 'Импорт',
-            metadata: 'Метаданные',
+            import: 'Книга',
+            metadata: 'Обогащение',
             convert: 'Конвертация',
             cache: 'Кэш',
         },
+        workflow: 'Процесс',
+        step: 'Шаг',
+        continueToMetadata: 'Перейти к метаданным',
+        continueToConvert: 'Перейти к конвертации',
+        chooseBookFirst: 'Сначала выбери аудиокнигу.',
+        metadataStepIntro: 'Найди книгу во внешних источниках, проверь вариант и используй его для конвертации.',
+        convertStepIntro: 'Проверь выбранную книгу и запусти финальную конвертацию M4B.',
         importSource: 'Источник',
         inputPath: 'Путь',
         inputPlaceholder: '/путь/к/book.mp3 или /путь/к/папке',
@@ -470,12 +484,29 @@ function App() {
         setIsInspecting(true);
         setInspectError('');
         InspectPath(path)
-            .then((result) => setInspectResult(result as InspectView))
+            .then((result) => {
+                const inspect = result as InspectView;
+                setInspectResult(inspect);
+                hydrateMetadataSearch(inspect);
+            })
             .catch((error) => {
                 setInspectResult(null);
                 setInspectError(String(error));
             })
             .finally(() => setIsInspecting(false));
+    }
+
+    function hydrateMetadataSearch(inspect: InspectView) {
+        const firstFile = inspect.Files[0];
+        if (!firstFile) {
+            return;
+        }
+        if (!metadataTitle.trim()) {
+            setMetadataTitle(firstFile.Tags?.Album || firstFile.Tags?.Title || '');
+        }
+        if (!metadataAuthor.trim()) {
+            setMetadataAuthor(firstFile.Tags?.Artist || '');
+        }
     }
 
     function selectPath(action: () => Promise<string>, update: (path: string) => void) {
@@ -698,6 +729,19 @@ function App() {
         ].filter(Boolean);
     }
 
+    function canOpenScreen(screen: Screen) {
+        if (screen === 'cache' || screen === 'import') {
+            return true;
+        }
+        return !!inputPath.trim();
+    }
+
+    function openScreen(screen: Screen) {
+        if (canOpenScreen(screen)) {
+            setActiveScreen(screen);
+        }
+    }
+
     return (
         <main className="app-shell">
             {showMetadataPrompt && metadataPreview && (
@@ -813,17 +857,39 @@ function App() {
                     </div>
                 </div>
 
-                <nav className="nav-list" aria-label="Primary">
-                    {screens.map((screen) => (
+                <nav className="nav-list workflow-list" aria-label="Primary">
+                    {workflowScreens.map((screen, index) => {
+                        const locked = !canOpenScreen(screen);
+                        const completed = screen === 'import' ? !!inspectResult : screen === 'metadata' ? !!conversionMetadata || !!metadataPath.trim() : !!convertResult;
+                        return (
                         <button
-                            className={screen === activeScreen ? 'nav-item active' : 'nav-item'}
+                            className={[
+                                'nav-item',
+                                'workflow-item',
+                                screen === activeScreen ? 'active' : '',
+                                completed ? 'completed' : '',
+                                locked ? 'locked' : '',
+                            ].filter(Boolean).join(' ')}
+                            disabled={locked}
                             key={screen}
-                            onClick={() => setActiveScreen(screen)}
+                            onClick={() => openScreen(screen)}
                             type="button"
                         >
-                            {copy.nav[screen]}
+                            <span className="step-number">{index + 1}</span>
+                            <span>
+                                <strong>{copy.nav[screen]}</strong>
+                                <small>{locked ? copy.chooseBookFirst : `${copy.step} ${index + 1}`}</small>
+                            </span>
                         </button>
-                    ))}
+                        );
+                    })}
+                    <button
+                        className={activeScreen === 'cache' ? 'nav-item active utility-item' : 'nav-item utility-item'}
+                        onClick={() => openScreen('cache')}
+                        type="button"
+                    >
+                        {copy.nav.cache}
+                    </button>
                 </nav>
 
                 <label className="language-picker">
@@ -841,7 +907,7 @@ function App() {
             <section className="workspace">
                 <header className="workspace-header">
                     <div>
-                        <p className="eyebrow">{copy.desktopShell}</p>
+                        <p className="eyebrow">{activeScreen === 'cache' ? copy.desktopShell : copy.workflow}</p>
                         <h2>{copy.nav[activeScreen]}</h2>
                     </div>
                     <span className="status-pill">{copy.goBridgeConnected}</span>
@@ -930,12 +996,20 @@ function App() {
                                 </div>
                             </div>
                         )}
+                        {inspectResult && (
+                            <div className="continue-row">
+                                <button className="primary-button" onClick={() => openScreen('metadata')} type="button">
+                                    {copy.continueToMetadata}
+                                </button>
+                            </div>
+                        )}
                     </section>
                 )}
 
                 {activeScreen === 'metadata' && (
                     <section className="panel">
                         <h3>{copy.metadataSearch}</h3>
+                        <p className="step-intro">{copy.metadataStepIntro}</p>
                         <div className="metadata-search">
                             <label>
                                 {copy.title}
@@ -1077,12 +1151,20 @@ function App() {
                                 )}
                             </aside>
                         </div>
+                        {(conversionMetadata || metadataPath.trim()) && (
+                            <div className="continue-row">
+                                <button className="primary-button" onClick={() => openScreen('convert')} type="button">
+                                    {copy.continueToConvert}
+                                </button>
+                            </div>
+                        )}
                     </section>
                 )}
 
                 {activeScreen === 'convert' && (
                     <section className="panel">
                         <h3>{copy.convert}</h3>
+                        <p className="step-intro">{copy.convertStepIntro}</p>
                         <div className="convert-grid">
                             <label>
                                 {copy.input}
