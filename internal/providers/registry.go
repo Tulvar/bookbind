@@ -2,6 +2,7 @@ package providers
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sort"
 	"strings"
@@ -21,10 +22,12 @@ func (r *Registry) Search(ctx context.Context, query SearchQuery) ([]Candidate, 
 	}
 
 	var all []Candidate
+	var providerErrors []error
 	for _, provider := range r.providers {
 		candidates, err := provider.Search(ctx, query)
 		if err != nil {
-			return nil, fmt.Errorf("%s search: %w", provider.Name(), err)
+			providerErrors = append(providerErrors, fmt.Errorf("%s search: %w", provider.Name(), err))
+			continue
 		}
 		for _, candidate := range candidates {
 			if candidate.Provider == "" {
@@ -33,6 +36,9 @@ func (r *Registry) Search(ctx context.Context, query SearchQuery) ([]Candidate, 
 			candidate.Confidence = Score(query, candidate)
 			all = append(all, candidate)
 		}
+	}
+	if len(all) == 0 && len(providerErrors) > 0 {
+		return nil, errors.Join(providerErrors...)
 	}
 
 	sort.SliceStable(all, func(i, j int) bool {

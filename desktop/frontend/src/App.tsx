@@ -724,7 +724,7 @@ function App() {
                                 <input
                                     onChange={(event) => updatePreparedMetadata({
                                         Author: event.target.value,
-                                        Authors: event.target.value.split(',').map((item) => item.trim()).filter(Boolean),
+                                        Authors: [],
                                     })}
                                     value={preparedMetadata.Authors?.join(', ') || preparedMetadata.Author}
                                 />
@@ -734,7 +734,7 @@ function App() {
                                 <input
                                     onChange={(event) => updatePreparedMetadata({
                                         Narrator: event.target.value,
-                                        Narrators: event.target.value.split(',').map((item) => item.trim()).filter(Boolean),
+                                        Narrators: [],
                                     })}
                                     value={preparedMetadata.Narrators?.join(', ') || preparedMetadata.Narrator}
                                 />
