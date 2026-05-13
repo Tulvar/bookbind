@@ -18,6 +18,7 @@ import {
     SelectCacheDirectory,
     SelectCoverFile,
     SelectMetadataFile,
+    SelectMetadataOutputFile,
     SelectOutputFile,
 } from '../wailsjs/go/main/App';
 import {EventsOn} from '../wailsjs/runtime/runtime';
@@ -203,6 +204,7 @@ const translations = {
         saving: 'Saving',
         saveMetadata: 'Save metadata',
         saveYamlInstead: 'Save YAML instead',
+        saveMetadataPath: 'Where to save metadata',
         close: 'Close',
         clearMetadata: 'Clear metadata',
         useForConvert: 'Use for conversion',
@@ -330,6 +332,7 @@ const translations = {
         saving: 'Сохраняем',
         saveMetadata: 'Сохранить метаданные',
         saveYamlInstead: 'Сохранить YAML',
+        saveMetadataPath: 'Куда сохранить метаданные',
         close: 'Закрыть',
         clearMetadata: 'Сбросить метаданные',
         useForConvert: 'Использовать в конвертации',
@@ -529,6 +532,17 @@ function App() {
                 }
             })
             .catch((error) => setInspectError(String(error)));
+    }
+
+    function selectMetadataOutputPath() {
+        setMetadataError('');
+        SelectMetadataOutputFile()
+            .then((path) => {
+                if (path) {
+                    setMetadataOutputPath(path);
+                }
+            })
+            .catch((error) => setMetadataError(String(error)));
     }
 
     function toggleProvider(providerName: string) {
@@ -762,12 +776,36 @@ function App() {
                             <strong>{metadataPreview.Book.Title || copy.untitled}</strong>
                             <span>{metadataPreview.Book.Authors?.join(', ') || metadataPreview.Book.Author || copy.unknown}</span>
                         </div>
+                        <div className="save-metadata-block">
+                            <label>
+                                {copy.saveMetadataPath}
+                                <div className="field-with-button">
+                                    <input
+                                        onChange={(event) => setMetadataOutputPath(event.target.value)}
+                                        placeholder="bookbind.yaml"
+                                        value={metadataOutputPath}
+                                    />
+                                    <button className="secondary-button" onClick={selectMetadataOutputPath} type="button">
+                                        {copy.browse}
+                                    </button>
+                                </div>
+                            </label>
+                            <label className="checkbox-line">
+                                <input
+                                    checked={overwriteMetadata}
+                                    onChange={(event) => setOverwriteMetadata(event.target.checked)}
+                                    type="checkbox"
+                                />
+                                {copy.overwriteExistingFile}
+                            </label>
+                        </div>
+                        {metadataError && <div className="error-box">{metadataError}</div>}
                         <div className="modal-actions">
                             <button className="primary-button" onClick={() => useMetadataForConvert(metadataPreview.Book)} type="button">
                                 {copy.useForConvert}
                             </button>
-                            <button className="secondary-button" onClick={() => setShowMetadataPrompt(false)} type="button">
-                                {copy.saveYamlInstead}
+                            <button className="secondary-button" disabled={isSavingMetadata} onClick={saveMetadata} type="button">
+                                {isSavingMetadata ? copy.saving : copy.saveYamlInstead}
                             </button>
                             <button className="secondary-button" onClick={() => setShowMetadataPrompt(false)} type="button">
                                 {copy.close}
@@ -1208,25 +1246,6 @@ function App() {
                                             <dt>{copy.year}</dt>
                                             <dd>{metadataPreview.Book.PublishedYear || '-'}</dd>
                                         </dl>
-                                        <label>
-                                            {copy.output}
-                                            <input
-                                                onChange={(event) => setMetadataOutputPath(event.target.value)}
-                                                placeholder="bookbind.yaml"
-                                                value={metadataOutputPath}
-                                            />
-                                        </label>
-                                        <label className="checkbox-line">
-                                            <input
-                                                checked={overwriteMetadata}
-                                                onChange={(event) => setOverwriteMetadata(event.target.checked)}
-                                                type="checkbox"
-                                            />
-                                            {copy.overwriteExistingFile}
-                                        </label>
-                                        <button className="primary-button" disabled={isSavingMetadata} onClick={saveMetadata} type="button">
-                                            {isSavingMetadata ? copy.saving : copy.saveMetadata}
-                                        </button>
                                         <button className="secondary-button" onClick={() => useMetadataForConvert(metadataPreview.Book)} type="button">
                                             {copy.useForConvert}
                                         </button>

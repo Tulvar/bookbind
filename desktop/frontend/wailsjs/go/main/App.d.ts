@@ -37,4 +37,6 @@ export function SelectCoverFile():Promise<string>;
 
 export function SelectMetadataFile():Promise<string>;
 
+export function SelectMetadataOutputFile():Promise<string>;
+
 export function SelectOutputFile():Promise<string>;

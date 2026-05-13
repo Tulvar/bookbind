@@ -70,6 +70,10 @@ export function SelectMetadataFile() {
   return window['go']['main']['App']['SelectMetadataFile']();
 }
 
+export function SelectMetadataOutputFile() {
+  return window['go']['main']['App']['SelectMetadataOutputFile']();
+}
+
 export function SelectOutputFile() {
   return window['go']['main']['App']['SelectOutputFile']();
 }

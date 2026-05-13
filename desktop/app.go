@@ -94,6 +94,17 @@ func (a *App) SelectMetadataFile() (string, error) {
 	})
 }
 
+func (a *App) SelectMetadataOutputFile() (string, error) {
+	return wailsruntime.SaveFileDialog(a.dialogContext(), wailsruntime.SaveDialogOptions{
+		Title:           "Save metadata YAML",
+		DefaultFilename: "bookbind.yaml",
+		Filters: []wailsruntime.FileFilter{
+			{DisplayName: "YAML metadata", Pattern: "*.yaml;*.yml"},
+			{DisplayName: "All files", Pattern: "*.*"},
+		},
+	})
+}
+
 func (a *App) SelectCoverFile() (string, error) {
 	return wailsruntime.OpenFileDialog(a.dialogContext(), wailsruntime.OpenDialogOptions{
 		Title: "Select cover image",
