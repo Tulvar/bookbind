@@ -38,12 +38,12 @@ export function PrepareConversion(arg1, arg2, arg3) {
   return window['go']['main']['App']['PrepareConversion'](arg1, arg2, arg3);
 }
 
-export function PreviewMetadata(arg1, arg2) {
-  return window['go']['main']['App']['PreviewMetadata'](arg1, arg2);
+export function PreviewMetadata(arg1, arg2, arg3) {
+  return window['go']['main']['App']['PreviewMetadata'](arg1, arg2, arg3);
 }
 
-export function ResolveMetadata(arg1, arg2, arg3, arg4) {
-  return window['go']['main']['App']['ResolveMetadata'](arg1, arg2, arg3, arg4);
+export function ResolveMetadata(arg1, arg2, arg3, arg4, arg5) {
+  return window['go']['main']['App']['ResolveMetadata'](arg1, arg2, arg3, arg4, arg5);
 }
 
 export function SearchMetadata(arg1, arg2, arg3, arg4) {

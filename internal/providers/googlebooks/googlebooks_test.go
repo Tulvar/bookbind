@@ -138,6 +138,29 @@ func TestGet(t *testing.T) {
 	}
 }
 
+func TestGetAddsAPIKey(t *testing.T) {
+	var gotKey string
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotKey = r.URL.Query().Get("key")
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"id":"volume-1","volumeInfo":{"title":"Book"}}`))
+	}))
+	defer server.Close()
+
+	provider := New(
+		WithBaseURL(server.URL),
+		WithHTTPClient(server.Client()),
+		WithAPIKey("test-key"),
+	)
+
+	if _, err := provider.Get(context.Background(), "volume-1"); err != nil {
+		t.Fatalf("Get() error = %v", err)
+	}
+	if gotKey != "test-key" {
+		t.Fatalf("key = %q, want test-key", gotKey)
+	}
+}
+
 func TestSearchRejectsEmptyQuery(t *testing.T) {
 	_, err := New().Search(context.Background(), providers.SearchQuery{})
 	if err == nil {

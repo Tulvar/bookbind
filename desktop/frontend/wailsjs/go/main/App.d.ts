@@ -21,9 +21,9 @@ export function ListCache(arg1:string):Promise<main.CacheListView>;
 
 export function PrepareConversion(arg1:string,arg2:string,arg3:main.BookMetadataView):Promise<main.ConversionPreparationView>;
 
-export function PreviewMetadata(arg1:string,arg2:string):Promise<main.MetadataPreviewView>;
+export function PreviewMetadata(arg1:string,arg2:string,arg3:string):Promise<main.MetadataPreviewView>;
 
-export function ResolveMetadata(arg1:string,arg2:string,arg3:string,arg4:boolean):Promise<main.MetadataResolveView>;
+export function ResolveMetadata(arg1:string,arg2:string,arg3:string,arg4:boolean,arg5:string):Promise<main.MetadataResolveView>;
 
 export function SearchMetadata(arg1:string,arg2:string,arg3:Array<string>,arg4:string):Promise<main.MetadataSearchView>;
 

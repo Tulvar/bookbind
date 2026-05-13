@@ -240,10 +240,11 @@ func (a *App) SearchMetadata(title, author string, providerNames []string, googl
 	return MetadataSearchView{Candidates: candidates}, nil
 }
 
-func (a *App) PreviewMetadata(provider, id string) (MetadataPreviewView, error) {
+func (a *App) PreviewMetadata(provider, id, googleBooksAPIKey string) (MetadataPreviewView, error) {
 	result, err := a.core.PreviewMetadata(a.dialogContext(), coreapp.PreviewMetadataRequest{
-		Provider: provider,
-		ID:       id,
+		Provider:          provider,
+		ID:                id,
+		GoogleBooksAPIKey: strings.TrimSpace(googleBooksAPIKey),
 	})
 	if err != nil {
 		return MetadataPreviewView{}, err
@@ -255,12 +256,13 @@ func (a *App) PreviewMetadata(provider, id string) (MetadataPreviewView, error) 
 	}, nil
 }
 
-func (a *App) ResolveMetadata(provider, id, outputPath string, overwrite bool) (MetadataResolveView, error) {
+func (a *App) ResolveMetadata(provider, id, outputPath string, overwrite bool, googleBooksAPIKey string) (MetadataResolveView, error) {
 	result, err := a.core.ResolveMetadata(a.dialogContext(), coreapp.ResolveMetadataRequest{
-		Provider:   provider,
-		ID:         id,
-		OutputPath: outputPath,
-		Overwrite:  overwrite,
+		Provider:          provider,
+		ID:                id,
+		OutputPath:        outputPath,
+		Overwrite:         overwrite,
+		GoogleBooksAPIKey: strings.TrimSpace(googleBooksAPIKey),
 	})
 	if err != nil {
 		return MetadataResolveView{}, err

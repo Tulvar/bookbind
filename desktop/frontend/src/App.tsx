@@ -539,7 +539,7 @@ function App() {
         setMetadataStatus('');
         setMetadataPreview(null);
         setIsPreviewingMetadata(true);
-        PreviewMetadata(candidate.Provider, candidate.ID)
+        PreviewMetadata(candidate.Provider, candidate.ID, googleBooksAPIKey.trim())
             .then((result) => {
                 setMetadataPreview(result as MetadataPreviewView);
                 setShowMetadataPrompt(true);
@@ -565,7 +565,7 @@ function App() {
         setIsSavingMetadata(true);
         setMetadataError('');
         setMetadataStatus('');
-        ResolveMetadata(selectedCandidate.Provider, selectedCandidate.ID, metadataOutputPath, overwriteMetadata)
+        ResolveMetadata(selectedCandidate.Provider, selectedCandidate.ID, metadataOutputPath, overwriteMetadata, googleBooksAPIKey.trim())
             .then((result) => {
                 setMetadataStatus(`${copy.saved} ${result.OutputPath}`);
                 setMetadataPath(result.OutputPath);
