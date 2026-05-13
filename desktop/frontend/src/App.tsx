@@ -22,7 +22,7 @@ import {
 } from '../wailsjs/go/main/App';
 import {EventsOn} from '../wailsjs/runtime/runtime';
 
-type Screen = 'import' | 'metadata' | 'convert' | 'cache';
+type Screen = 'import' | 'metadata' | 'convert';
 type Locale = 'en' | 'ru';
 
 type ProviderInfo = {
@@ -149,6 +149,10 @@ const translations = {
             convert: 'Convert',
             cache: 'Cache',
         },
+        settings: 'Settings',
+        settingsTitle: 'Settings',
+        settingsIntro: 'Language, metadata providers, and local cache live here.',
+        metadataSources: 'Metadata sources',
         workflow: 'Workflow',
         step: 'Step',
         continueToMetadata: 'Continue to metadata',
@@ -272,6 +276,10 @@ const translations = {
             convert: 'Конвертация',
             cache: 'Кэш',
         },
+        settings: 'Настройки',
+        settingsTitle: 'Настройки',
+        settingsIntro: 'Здесь живут язык, источники метаданных и локальный кэш.',
+        metadataSources: 'Источники метаданных',
         workflow: 'Процесс',
         step: 'Шаг',
         continueToMetadata: 'Перейти к метаданным',
@@ -401,6 +409,7 @@ const localeOptions: Array<{ id: Locale; labelKey: 'languageEnglish' | 'language
 
 function App() {
     const [activeScreen, setActiveScreen] = useState<Screen>('import');
+    const [showSettings, setShowSettings] = useState(false);
     const [locale, setLocale] = useState<Locale>(initialLocale);
     const [version, setVersion] = useState('');
     const [providers, setProviders] = useState<ProviderInfo[]>([]);
@@ -730,7 +739,7 @@ function App() {
     }
 
     function canOpenScreen(screen: Screen) {
-        if (screen === 'cache' || screen === 'import') {
+        if (screen === 'import') {
             return true;
         }
         return !!inputPath.trim();
@@ -848,6 +857,122 @@ function App() {
                     </section>
                 </div>
             )}
+            {showSettings && (
+                <div className="modal-backdrop" role="presentation">
+                    <section aria-modal="true" className="modal settings-modal" role="dialog">
+                        <div className="modal-title-row">
+                            <div>
+                                <h3>{copy.settingsTitle}</h3>
+                                <p>{copy.settingsIntro}</p>
+                            </div>
+                            <button className="icon-button" onClick={() => setShowSettings(false)} type="button" aria-label={copy.close}>
+                                ×
+                            </button>
+                        </div>
+
+                        <div className="settings-grid">
+                            <section className="settings-section">
+                                <h4>{copy.language}</h4>
+                                <select onChange={(event) => changeLocale(event.target.value as Locale)} value={locale}>
+                                    {localeOptions.map((option) => (
+                                        <option key={option.id} value={option.id}>
+                                            {copy[option.labelKey]}
+                                        </option>
+                                    ))}
+                                </select>
+                            </section>
+
+                            <section className="settings-section">
+                                <h4>{copy.metadataSources}</h4>
+                                <div className="provider-strip" aria-label={copy.provider}>
+                                    {providers.length === 0 && <span>{copy.noProviders}</span>}
+                                    {providers.map((provider) => (
+                                        <label className={provider.Enabled ? 'provider-toggle' : 'provider-toggle disabled'} key={provider.Name}>
+                                            <input
+                                                checked={selectedProviders.includes(provider.Name)}
+                                                disabled={!provider.Enabled}
+                                                onChange={() => toggleProvider(provider.Name)}
+                                                type="checkbox"
+                                            />
+                                            {provider.Name}
+                                        </label>
+                                    ))}
+                                </div>
+                                <label className="api-key-field compact">
+                                    {copy.googleBooksAPIKey}
+                                    <input
+                                        onChange={(event) => updateGoogleBooksAPIKey(event.target.value)}
+                                        placeholder={copy.googleBooksAPIKeyPlaceholder}
+                                        type="password"
+                                        value={googleBooksAPIKey}
+                                    />
+                                    <span>{copy.googleBooksAPIKeyHelp}</span>
+                                </label>
+                            </section>
+
+                            <section className="settings-section">
+                                <h4>{copy.nav.cache}</h4>
+                                <div className="cache-toolbar settings-cache-toolbar">
+                                    <label className="path-field">
+                                        {copy.cachePath}
+                                        <div className="field-with-button">
+                                            <input
+                                                onChange={(event) => setCachePath(event.target.value)}
+                                                placeholder={copy.defaultCache}
+                                                value={cachePath}
+                                            />
+                                            <button className="secondary-button" onClick={() => selectPath(SelectCacheDirectory, setCachePath)} type="button">
+                                                {copy.browse}
+                                            </button>
+                                        </div>
+                                    </label>
+                                    <button className="secondary-button" disabled={isCacheBusy} onClick={refreshCache} type="button">
+                                        {isCacheBusy ? copy.working : copy.refresh}
+                                    </button>
+                                    <button
+                                        className="primary-button danger"
+                                        disabled={isCacheBusy || !cacheResult || cacheResult.Entries.length === 0}
+                                        onClick={cleanCache}
+                                        type="button"
+                                    >
+                                        {copy.clean}
+                                    </button>
+                                </div>
+                                {cacheError && <div className="error-box">{cacheError}</div>}
+                                {cacheStatus && <div className="success-box">{cacheStatus}</div>}
+                                {cacheResult && (
+                                    <div className="summary-row">
+                                        <span>{cacheResult.Path}</span>
+                                        <strong>{formatEntryCount(cacheResult.Entries.length, locale, copy.entries)} · {cacheResult.Size}</strong>
+                                    </div>
+                                )}
+                                <div className="table-shell">
+                                    <div className="cache-table-header">
+                                        <span>{copy.type}</span>
+                                        <span>{copy.name}</span>
+                                        <span>{copy.size}</span>
+                                    </div>
+                                    {!cacheResult && <div className="table-empty">{copy.refreshCacheEmpty}</div>}
+                                    {cacheResult && cacheResult.Entries.length === 0 && <div className="table-empty">{copy.cacheEmpty}</div>}
+                                    {cacheResult?.Entries.map((entry) => (
+                                        <div className="cache-row" key={entry.Path}>
+                                            <span>{entry.Kind}</span>
+                                            <strong>{entry.Name}</strong>
+                                            <span>{entry.Size}</span>
+                                        </div>
+                                    ))}
+                                </div>
+                            </section>
+                        </div>
+
+                        <div className="modal-actions">
+                            <button className="primary-button" onClick={() => setShowSettings(false)} type="button">
+                                {copy.close}
+                            </button>
+                        </div>
+                    </section>
+                </div>
+            )}
             <aside className="sidebar">
                 <div className="brand">
                     <span className="brand-mark">B</span>
@@ -883,34 +1008,22 @@ function App() {
                         </button>
                         );
                     })}
-                    <button
-                        className={activeScreen === 'cache' ? 'nav-item active utility-item' : 'nav-item utility-item'}
-                        onClick={() => openScreen('cache')}
-                        type="button"
-                    >
-                        {copy.nav.cache}
-                    </button>
                 </nav>
 
-                <label className="language-picker">
-                    {copy.language}
-                    <select onChange={(event) => changeLocale(event.target.value as Locale)} value={locale}>
-                        {localeOptions.map((option) => (
-                            <option key={option.id} value={option.id}>
-                                {copy[option.labelKey]}
-                            </option>
-                        ))}
-                    </select>
-                </label>
+                <button className="nav-item settings-button" onClick={() => setShowSettings(true)} type="button">
+                    {copy.settings}
+                </button>
             </aside>
 
             <section className="workspace">
                 <header className="workspace-header">
                     <div>
-                        <p className="eyebrow">{activeScreen === 'cache' ? copy.desktopShell : copy.workflow}</p>
+                        <p className="eyebrow">{copy.workflow}</p>
                         <h2>{copy.nav[activeScreen]}</h2>
                     </div>
-                    <span className="status-pill">{copy.goBridgeConnected}</span>
+                    <button className="secondary-button" onClick={() => setShowSettings(true)} type="button">
+                        {copy.settings}
+                    </button>
                 </header>
 
                 {activeScreen === 'import' && (
@@ -1031,31 +1144,6 @@ function App() {
                                 {isSearchingMetadata ? copy.searching : copy.search}
                             </button>
                         </div>
-
-                        <div className="provider-strip" aria-label={copy.provider}>
-                            {providers.length === 0 && <span>{copy.noProviders}</span>}
-                            {providers.map((provider) => (
-                                <label className={provider.Enabled ? 'provider-toggle' : 'provider-toggle disabled'} key={provider.Name}>
-                                    <input
-                                        checked={selectedProviders.includes(provider.Name)}
-                                        disabled={!provider.Enabled}
-                                        onChange={() => toggleProvider(provider.Name)}
-                                        type="checkbox"
-                                    />
-                                    {provider.Name}
-                                </label>
-                            ))}
-                        </div>
-                        <label className="api-key-field">
-                            {copy.googleBooksAPIKey}
-                            <input
-                                onChange={(event) => updateGoogleBooksAPIKey(event.target.value)}
-                                placeholder={copy.googleBooksAPIKeyPlaceholder}
-                                type="password"
-                                value={googleBooksAPIKey}
-                            />
-                            <span>{copy.googleBooksAPIKeyHelp}</span>
-                        </label>
 
                         {metadataError && <div className="error-box">{metadataError}</div>}
                         {metadataStatus && <div className="success-box">{metadataStatus}</div>}
@@ -1276,61 +1364,6 @@ function App() {
                     </section>
                 )}
 
-                {activeScreen === 'cache' && (
-                    <section className="panel">
-                        <h3>{copy.nav.cache}</h3>
-                        <div className="cache-toolbar">
-                            <label className="path-field">
-                                {copy.cachePath}
-                                <div className="field-with-button">
-                                    <input
-                                        onChange={(event) => setCachePath(event.target.value)}
-                                        placeholder={copy.defaultCache}
-                                        value={cachePath}
-                                    />
-                                    <button className="secondary-button" onClick={() => selectPath(SelectCacheDirectory, setCachePath)} type="button">
-                                        {copy.browse}
-                                    </button>
-                                </div>
-                            </label>
-                            <button className="secondary-button" disabled={isCacheBusy} onClick={refreshCache} type="button">
-                                {isCacheBusy ? copy.working : copy.refresh}
-                            </button>
-                            <button
-                                className="primary-button danger"
-                                disabled={isCacheBusy || !cacheResult || cacheResult.Entries.length === 0}
-                                onClick={cleanCache}
-                                type="button"
-                            >
-                                {copy.clean}
-                            </button>
-                        </div>
-                        {cacheError && <div className="error-box">{cacheError}</div>}
-                        {cacheStatus && <div className="success-box">{cacheStatus}</div>}
-                        {cacheResult && (
-                            <div className="summary-row">
-                                <span>{cacheResult.Path}</span>
-                                <strong>{formatEntryCount(cacheResult.Entries.length, locale, copy.entries)} · {cacheResult.Size}</strong>
-                            </div>
-                        )}
-                        <div className="table-shell">
-                            <div className="cache-table-header">
-                                <span>{copy.type}</span>
-                                <span>{copy.name}</span>
-                                <span>{copy.size}</span>
-                            </div>
-                            {!cacheResult && <div className="table-empty">{copy.refreshCacheEmpty}</div>}
-                            {cacheResult && cacheResult.Entries.length === 0 && <div className="table-empty">{copy.cacheEmpty}</div>}
-                            {cacheResult?.Entries.map((entry) => (
-                                <div className="cache-row" key={entry.Path}>
-                                    <span>{entry.Kind}</span>
-                                    <strong>{entry.Name}</strong>
-                                    <span>{entry.Size}</span>
-                                </div>
-                            ))}
-                        </div>
-                    </section>
-                )}
             </section>
         </main>
     );

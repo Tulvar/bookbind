@@ -52,7 +52,7 @@
     gap: 8px;
 }
 
-.language-picker {
+.settings-button {
     border-top: 1px solid #e5eaf0;
     margin-top: 22px;
     padding-top: 18px;
@@ -159,15 +159,6 @@ select {
     margin: 3px 0 0;
 }
 
-.status-pill {
-    background: #e8f5ee;
-    border: 1px solid #b9dfc8;
-    border-radius: 999px;
-    color: #21643b;
-    font-size: 13px;
-    padding: 7px 12px;
-}
-
 .modal-backdrop {
     align-items: center;
     background: rgb(15 23 42 / 42%);
@@ -194,6 +185,54 @@ select {
 .wide-modal {
     max-width: 720px;
     width: min(100%, 720px);
+}
+
+.settings-modal {
+    max-height: min(860px, calc(100vh - 48px));
+    max-width: 900px;
+    overflow: auto;
+    width: min(100%, 900px);
+}
+
+.modal-title-row {
+    align-items: start;
+    display: flex;
+    gap: 16px;
+    justify-content: space-between;
+}
+
+.icon-button {
+    align-items: center;
+    background: #eef3f8;
+    border: 1px solid #d8dee7;
+    border-radius: 6px;
+    color: #334155;
+    cursor: pointer;
+    display: inline-flex;
+    font: inherit;
+    font-size: 22px;
+    height: 34px;
+    justify-content: center;
+    line-height: 1;
+    width: 34px;
+}
+
+.settings-grid {
+    display: grid;
+    gap: 16px;
+}
+
+.settings-section {
+    border: 1px solid #e5eaf0;
+    border-radius: 8px;
+    display: grid;
+    gap: 12px;
+    padding: 14px;
+}
+
+.settings-section h4 {
+    font-size: 15px;
+    margin: 0;
 }
 
 .modal h3,
@@ -589,6 +628,11 @@ input {
     margin-bottom: 16px;
 }
 
+.settings-cache-toolbar {
+    grid-template-columns: minmax(260px, 1fr) minmax(120px, auto) minmax(110px, auto);
+    margin-bottom: 0;
+}
+
 .cache-table-header,
 .cache-row {
     display: grid;
@@ -647,6 +691,10 @@ input {
     font-size: 13px;
     line-height: 1.45;
     margin-top: 7px;
+}
+
+.api-key-field.compact {
+    margin-bottom: 0;
 }
 
 .provider-toggle,
