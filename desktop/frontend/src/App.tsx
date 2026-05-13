@@ -1021,9 +1021,6 @@ function App() {
                         <p className="eyebrow">{copy.workflow}</p>
                         <h2>{copy.nav[activeScreen]}</h2>
                     </div>
-                    <button className="secondary-button" onClick={() => setShowSettings(true)} type="button">
-                        {copy.settings}
-                    </button>
                 </header>
 
                 {activeScreen === 'import' && (
