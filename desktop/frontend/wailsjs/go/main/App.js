@@ -46,8 +46,8 @@ export function ResolveMetadata(arg1, arg2, arg3, arg4) {
   return window['go']['main']['App']['ResolveMetadata'](arg1, arg2, arg3, arg4);
 }
 
-export function SearchMetadata(arg1, arg2, arg3) {
-  return window['go']['main']['App']['SearchMetadata'](arg1, arg2, arg3);
+export function SearchMetadata(arg1, arg2, arg3, arg4) {
+  return window['go']['main']['App']['SearchMetadata'](arg1, arg2, arg3, arg4);
 }
 
 export function SelectAudioDirectory() {

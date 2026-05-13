@@ -241,6 +241,9 @@ const translations = {
         titleOrAuthorRequired: 'Title or author is required.',
         selectProvider: 'Select at least one provider.',
         selectCandidateFirst: 'Select a candidate first.',
+        googleBooksAPIKey: 'Google Books API key',
+        googleBooksAPIKeyPlaceholder: 'Optional API key',
+        googleBooksAPIKeyHelp: 'Optional. A personal key can make Google Books search more reliable and reduce anonymous rate limits. Create it in Google Cloud Console, enable Books API, then paste the key here. It is saved only on this computer.',
         saved: 'Saved',
         removed: 'Removed',
     },
@@ -352,6 +355,9 @@ const translations = {
         titleOrAuthorRequired: 'Нужно указать название или автора.',
         selectProvider: 'Выбери хотя бы один источник.',
         selectCandidateFirst: 'Сначала выбери вариант.',
+        googleBooksAPIKey: 'Google Books API key',
+        googleBooksAPIKeyPlaceholder: 'Необязательный ключ',
+        googleBooksAPIKeyHelp: 'Необязательно. Личный ключ делает поиск Google Books стабильнее и снижает шанс anonymous rate limit. Создай ключ в Google Cloud Console, включи Books API и вставь его сюда. Ключ хранится только на этом компьютере.',
         saved: 'Сохранено',
         removed: 'Удалено',
     },
@@ -386,6 +392,7 @@ function App() {
     const [isInspecting, setIsInspecting] = useState(false);
     const [metadataTitle, setMetadataTitle] = useState('');
     const [metadataAuthor, setMetadataAuthor] = useState('');
+    const [googleBooksAPIKey, setGoogleBooksAPIKey] = useState(() => localStorage.getItem('bookbind-google-books-api-key') || '');
     const [selectedProviders, setSelectedProviders] = useState<string[]>([]);
     const [metadataCandidates, setMetadataCandidates] = useState<MetadataCandidateView[]>([]);
     const [selectedCandidate, setSelectedCandidate] = useState<MetadataCandidateView | null>(null);
@@ -487,6 +494,15 @@ function App() {
         });
     }
 
+    function updateGoogleBooksAPIKey(value: string) {
+        setGoogleBooksAPIKey(value);
+        if (value.trim()) {
+            localStorage.setItem('bookbind-google-books-api-key', value.trim());
+        } else {
+            localStorage.removeItem('bookbind-google-books-api-key');
+        }
+    }
+
     function searchMetadata() {
         if (!metadataTitle.trim() && !metadataAuthor.trim()) {
             setMetadataError(copy.titleOrAuthorRequired);
@@ -502,7 +518,7 @@ function App() {
         setMetadataStatus('');
         setSelectedCandidate(null);
         setMetadataPreview(null);
-        SearchMetadata(metadataTitle, metadataAuthor, selectedProviders)
+        SearchMetadata(metadataTitle, metadataAuthor, selectedProviders, googleBooksAPIKey.trim())
             .then((result) => setMetadataCandidates((result.Candidates || []) as MetadataCandidateView[]))
             .catch((error) => {
                 setMetadataCandidates([]);
@@ -940,6 +956,16 @@ function App() {
                                 </label>
                             ))}
                         </div>
+                        <label className="api-key-field">
+                            {copy.googleBooksAPIKey}
+                            <input
+                                onChange={(event) => updateGoogleBooksAPIKey(event.target.value)}
+                                placeholder={copy.googleBooksAPIKeyPlaceholder}
+                                type="password"
+                                value={googleBooksAPIKey}
+                            />
+                            <span>{copy.googleBooksAPIKeyHelp}</span>
+                        </label>
 
                         {metadataError && <div className="error-box">{metadataError}</div>}
                         {metadataStatus && <div className="success-box">{metadataStatus}</div>}

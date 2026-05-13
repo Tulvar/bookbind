@@ -8,9 +8,10 @@ import (
 )
 
 type SearchRequest struct {
-	Title     string
-	Author    string
-	Providers []string
+	Title             string
+	Author            string
+	Providers         []string
+	GoogleBooksAPIKey string
 }
 
 type SearchResult struct {
@@ -23,8 +24,10 @@ func (a *App) SearchMetadata(ctx context.Context, req SearchRequest) (SearchResu
 	}
 
 	registry := a.providers
-	if len(req.Providers) > 0 {
-		selected, err := NewProviderRegistry(req.Providers)
+	if len(req.Providers) > 0 || req.GoogleBooksAPIKey != "" {
+		selected, err := NewProviderRegistryWithConfig(req.Providers, ProviderConfig{
+			GoogleBooksAPIKey: req.GoogleBooksAPIKey,
+		})
 		if err != nil {
 			return SearchResult{}, err
 		}

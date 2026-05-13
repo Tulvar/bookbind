@@ -220,11 +220,12 @@ type ConversionPreparationView struct {
 	Files   int
 }
 
-func (a *App) SearchMetadata(title, author string, providerNames []string) (MetadataSearchView, error) {
+func (a *App) SearchMetadata(title, author string, providerNames []string, googleBooksAPIKey string) (MetadataSearchView, error) {
 	result, err := a.core.SearchMetadata(a.dialogContext(), coreapp.SearchRequest{
-		Title:     strings.TrimSpace(title),
-		Author:    strings.TrimSpace(author),
-		Providers: providerNames,
+		Title:             strings.TrimSpace(title),
+		Author:            strings.TrimSpace(author),
+		Providers:         providerNames,
+		GoogleBooksAPIKey: strings.TrimSpace(googleBooksAPIKey),
 	})
 	if err != nil {
 		return MetadataSearchView{}, err

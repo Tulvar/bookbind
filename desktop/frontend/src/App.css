@@ -567,6 +567,22 @@ input {
     margin-bottom: 16px;
 }
 
+.api-key-field {
+    background: #f8fafc;
+    border: 1px solid #e5eaf0;
+    border-radius: 6px;
+    margin-bottom: 16px;
+    padding: 12px;
+}
+
+.api-key-field span {
+    color: #647184;
+    display: block;
+    font-size: 13px;
+    line-height: 1.45;
+    margin-top: 7px;
+}
+
 .provider-toggle,
 .checkbox-line {
     align-items: center;

@@ -30,8 +30,8 @@ func TestNewProviderRegistryRejectsUnknownProvider(t *testing.T) {
 }
 
 func TestProviderNamesCSV(t *testing.T) {
-	got := ProviderNamesCSV([]ProviderInfo{{Name: "googlebooks"}, {Name: "openlibrary"}})
-	if got != "googlebooks,openlibrary" {
+	got := ProviderNamesCSV([]ProviderInfo{{Name: "googlebooks"}, {Name: "openlibrary"}, {Name: "fantlab"}})
+	if got != "fantlab,googlebooks,openlibrary" {
 		t.Fatalf("ProviderNamesCSV() = %q", got)
 	}
 }
