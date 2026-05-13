@@ -2,7 +2,7 @@
 
 `bookbind` converts MP3 audiobook files into M4B.
 
-Current milestone: `v0.4.0`.
+Current milestone: `v0.4.2`.
 
 The current focus is a Wails desktop UI for Windows, macOS, and Linux on top of
 the existing Go core.
@@ -140,14 +140,29 @@ wails dev
 Release builds are created by pushing a version tag:
 
 ```bash
-git tag v0.4.0
-git push origin v0.4.0
+git tag v0.4.2
+git push origin v0.4.2
 ```
 
-The release workflow builds CLI artifacts named with the version, for example
-`bookbind-v0.4.0-linux-amd64` and `bookbind-v0.4.0-windows-amd64.exe`.
-It also builds desktop artifacts named like
-`bookbind-desktop-v0.4.0-darwin-arm64.zip`.
+The release workflow runs on the self-hosted Linux runner. It cross-builds CLI
+artifacts named with the version, for example `bookbind-v0.4.2-linux-amd64` and
+`bookbind-v0.4.2-windows-amd64.exe`.
+
+The desktop release workflow currently builds only the Linux desktop artifact:
+`bookbind-desktop-v0.4.2-linux-amd64.tar.gz`.
+
+macOS and Windows desktop builds can still be created manually on machines with
+the matching operating system:
+
+```bash
+cd desktop
+wails build -platform darwin/arm64 -ldflags "-s -w -X github.com/Tulvar/bookbind/pkg/version.Version=v0.4.2"
+wails build -platform darwin/amd64 -ldflags "-s -w -X github.com/Tulvar/bookbind/pkg/version.Version=v0.4.2"
+wails build -platform windows/amd64 -ldflags "-s -w -X github.com/Tulvar/bookbind/pkg/version.Version=v0.4.2"
+```
+
+For Wails desktop releases, native builds are preferred: Linux on Linux, macOS
+on macOS, and Windows on Windows.
 
 `ffmpeg` and `ffprobe` must be available on `PATH` for real inspect/convert
 runs.
@@ -160,7 +175,7 @@ runs.
 - React/TypeScript frontend
 - Go bridge over the existing app use cases
 - import, metadata, convert, and cache screens
-- desktop build and CI smoke checks
+- Linux desktop release build and CI smoke checks on a self-hosted runner
 
 ### v0.3.0
 
