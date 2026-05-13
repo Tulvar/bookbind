@@ -193,6 +193,8 @@ type BookMetadataView struct {
 	Author        string
 	Narrators     []string
 	Narrator      string
+	Translators   []string
+	Translator    string
 	Series        string
 	SeriesIndex   string
 	Language      string
@@ -571,6 +573,8 @@ func bookView(book metadata.Book) BookMetadataView {
 		Author:        book.Author,
 		Narrators:     book.Narrators,
 		Narrator:      book.Narrator,
+		Translators:   book.Translators,
+		Translator:    book.Translator,
 		Series:        book.Series,
 		SeriesIndex:   book.SeriesIndex,
 		Language:      book.Language,
@@ -590,6 +594,8 @@ func bookFromView(book BookMetadataView) metadata.Book {
 		Author:        book.Author,
 		Narrators:     book.Narrators,
 		Narrator:      book.Narrator,
+		Translators:   book.Translators,
+		Translator:    book.Translator,
 		Series:        book.Series,
 		SeriesIndex:   book.SeriesIndex,
 		Language:      book.Language,

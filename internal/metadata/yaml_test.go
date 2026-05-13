@@ -12,6 +12,7 @@ func TestLoadYAML(t *testing.T) {
 	data := []byte(`title: "Night Watch"
 author: "Sergey Lukyanenko"
 narrator: "Reader"
+translator: "Translator"
 series: "Watches"
 series_index: "1"
 language: "ru"
@@ -39,6 +40,9 @@ description: |
 	}
 	if book.Description == "" {
 		t.Fatal("Description is empty")
+	}
+	if got := book.NormalizedTranslators(); len(got) != 1 || got[0] != "Translator" {
+		t.Fatalf("translators = %#v", got)
 	}
 }
 
@@ -104,6 +108,7 @@ func TestMarshalTemplateYAML(t *testing.T) {
 	for _, want := range []string{
 		"title: Night Watch",
 		"author: \"\"",
+		"translator: \"\"",
 		"published_year: \"\"",
 		"cover: cover.jpg",
 		"chapters_from_files: true",

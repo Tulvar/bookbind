@@ -74,6 +74,8 @@ type BookMetadataView = {
     Author: string;
     Narrators: string[];
     Narrator: string;
+    Translators: string[];
+    Translator: string;
     Series: string;
     SeriesIndex: string;
     Language: string;
@@ -182,6 +184,7 @@ const translations = {
         loading: 'Loading',
         noCover: 'No cover',
         narrators: 'Narrators',
+        translators: 'Translators',
         series: 'Series',
         genre: 'Genre',
         output: 'Output',
@@ -202,6 +205,7 @@ const translations = {
         startConversion: 'Start conversion',
         authorsInput: 'Authors',
         narrator: 'Narrator',
+        translator: 'Translator',
         selectCandidatePreview: 'Select a candidate to preview metadata.',
         input: 'Input',
         outputPlaceholder: 'Optional, defaults next to input',
@@ -296,6 +300,7 @@ const translations = {
         loading: 'Загрузка',
         noCover: 'Нет обложки',
         narrators: 'Чтецы',
+        translators: 'Переводчики',
         series: 'Серия',
         genre: 'Жанр',
         output: 'Выходной файл',
@@ -316,6 +321,7 @@ const translations = {
         startConversion: 'Начать конвертацию',
         authorsInput: 'Авторы',
         narrator: 'Чтец',
+        translator: 'Переводчик',
         selectCandidatePreview: 'Выбери вариант, чтобы посмотреть метаданные.',
         input: 'Источник',
         outputPlaceholder: 'Необязательно, по умолчанию рядом с источником',
@@ -756,6 +762,16 @@ function App() {
                                 />
                             </label>
                             <label>
+                                {copy.translator}
+                                <input
+                                    onChange={(event) => updatePreparedMetadata({
+                                        Translator: event.target.value,
+                                        Translators: [],
+                                    })}
+                                    value={preparedMetadata.Translators?.join(', ') || preparedMetadata.Translator}
+                                />
+                            </label>
+                            <label>
                                 {copy.language}
                                 <input
                                     onChange={(event) => updatePreparedMetadata({Language: event.target.value})}
@@ -1024,6 +1040,8 @@ function App() {
                                             <dd>{metadataPreview.Book.Authors?.join(', ') || metadataPreview.Book.Author || '-'}</dd>
                                             <dt>{copy.narrators}</dt>
                                             <dd>{metadataPreview.Book.Narrators?.join(', ') || metadataPreview.Book.Narrator || '-'}</dd>
+                                            <dt>{copy.translators}</dt>
+                                            <dd>{metadataPreview.Book.Translators?.join(', ') || metadataPreview.Book.Translator || '-'}</dd>
                                             <dt>{copy.series}</dt>
                                             <dd>
                                                 {[metadataPreview.Book.Series, metadataPreview.Book.SeriesIndex].filter(Boolean).join(' #') || '-'}
@@ -1244,6 +1262,8 @@ function emptyBookMetadata(): BookMetadataView {
         Author: '',
         Narrators: [],
         Narrator: '',
+        Translators: [],
+        Translator: '',
         Series: '',
         SeriesIndex: '',
         Language: '',

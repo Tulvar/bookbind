@@ -32,6 +32,7 @@ func writeBookMetadata(builder *strings.Builder, book metadata.Book) {
 	writeTag(builder, "artist", strings.Join(book.NormalizedAuthors(), "; "))
 	writeTag(builder, "album_artist", strings.Join(book.NormalizedAuthors(), "; "))
 	writeTag(builder, "composer", strings.Join(book.NormalizedNarrators(), "; "))
+	writeTag(builder, "translator", strings.Join(book.NormalizedTranslators(), "; "))
 	writeTag(builder, "album", albumTitle(book))
 	writeTag(builder, "genre", book.Genre)
 	writeTag(builder, "description", book.Description)

@@ -111,5 +111,8 @@ func bookFromCandidate(candidate providers.Candidate) metadata.Book {
 	if len(book.Narrators) > 0 {
 		book.Narrator = strings.Join(book.Narrators, ", ")
 	}
+	if len(book.Translators) > 0 {
+		book.Translator = strings.Join(book.Translators, ", ")
+	}
 	return book
 }

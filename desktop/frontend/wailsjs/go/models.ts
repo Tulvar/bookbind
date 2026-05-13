@@ -59,6 +59,8 @@ export namespace main {
 	    Author: string;
 	    Narrators: string[];
 	    Narrator: string;
+	    Translators: string[];
+	    Translator: string;
 	    Series: string;
 	    SeriesIndex: string;
 	    Language: string;
@@ -80,6 +82,8 @@ export namespace main {
 	        this.Author = source["Author"];
 	        this.Narrators = source["Narrators"];
 	        this.Narrator = source["Narrator"];
+	        this.Translators = source["Translators"];
+	        this.Translator = source["Translator"];
 	        this.Series = source["Series"];
 	        this.SeriesIndex = source["SeriesIndex"];
 	        this.Language = source["Language"];

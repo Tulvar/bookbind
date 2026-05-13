@@ -161,6 +161,13 @@ func overlayBook(base, override metadata.Book) metadata.Book {
 		base.Narrator = override.Narrator
 		base.Narrators = nil
 	}
+	if len(override.Translators) > 0 {
+		base.Translators = override.Translators
+		base.Translator = ""
+	} else if override.Translator != "" {
+		base.Translator = override.Translator
+		base.Translators = nil
+	}
 	if override.Series != "" {
 		base.Series = override.Series
 	}
@@ -198,6 +205,9 @@ func missingMetadataFields(book metadata.Book) []string {
 	}
 	if len(book.NormalizedNarrators()) == 0 {
 		missing = append(missing, "narrator")
+	}
+	if len(book.NormalizedTranslators()) == 0 {
+		missing = append(missing, "translator")
 	}
 	if strings.TrimSpace(book.Language) == "" {
 		missing = append(missing, "language")
