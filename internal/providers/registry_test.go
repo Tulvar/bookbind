@@ -2,6 +2,7 @@ package providers
 
 import (
 	"context"
+	"fmt"
 	"testing"
 )
 
@@ -40,6 +41,32 @@ func TestRegistryRejectsEmptyQuery(t *testing.T) {
 	}
 }
 
+func TestRegistrySearchKeepsResultsWhenProviderFails(t *testing.T) {
+	registry := NewRegistry(
+		stubProvider{name: "broken", err: fmt.Errorf("too many requests")},
+		stubProvider{name: "working", candidates: []Candidate{{ID: "book-1", Title: "Book"}}},
+	)
+
+	got, err := registry.Search(context.Background(), SearchQuery{Title: "Book"})
+	if err != nil {
+		t.Fatalf("Search() error = %v", err)
+	}
+	if len(got) != 1 {
+		t.Fatalf("len = %d, want 1", len(got))
+	}
+	if got[0].Provider != "working" {
+		t.Fatalf("Provider = %q, want working", got[0].Provider)
+	}
+}
+
+func TestRegistrySearchReturnsErrorWhenAllProvidersFail(t *testing.T) {
+	_, err := NewRegistry(stubProvider{name: "broken", err: fmt.Errorf("too many requests")}).
+		Search(context.Background(), SearchQuery{Title: "Book"})
+	if err == nil {
+		t.Fatal("Search() error = nil, want error")
+	}
+}
+
 func TestRegistryGetUsesSelectedProvider(t *testing.T) {
 	got, err := NewRegistry(stubProvider{candidates: []Candidate{
 		{ID: "book-1", Title: "Book"},
@@ -64,14 +91,22 @@ func TestRegistryGetRejectsUnknownProvider(t *testing.T) {
 }
 
 type stubProvider struct {
+	name       string
 	candidates []Candidate
+	err        error
 }
 
 func (p stubProvider) Name() string {
+	if p.name != "" {
+		return p.name
+	}
 	return "stub"
 }
 
 func (p stubProvider) Search(context.Context, SearchQuery) ([]Candidate, error) {
+	if p.err != nil {
+		return nil, p.err
+	}
 	return p.candidates, nil
 }
 

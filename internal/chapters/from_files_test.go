@@ -30,6 +30,19 @@ func TestFromAudioFilesBuildsSequentialChapters(t *testing.T) {
 	}
 }
 
+func TestFromAudioFilesPrefersEmbeddedTitle(t *testing.T) {
+	result, err := FromAudioFiles([]audio.File{
+		{Name: "01.mp3", Duration: time.Second, Tags: audio.EmbeddedTags{Title: "Opening"}},
+	})
+	if err != nil {
+		t.Fatalf("FromAudioFiles() error = %v", err)
+	}
+
+	if got, want := result[0].Title, "Opening"; got != want {
+		t.Fatalf("Title = %q, want %q", got, want)
+	}
+}
+
 func TestFromAudioFilesRejectsMissingDuration(t *testing.T) {
 	_, err := FromAudioFiles([]audio.File{{Name: "01.mp3", Path: "01.mp3"}})
 	if err == nil {

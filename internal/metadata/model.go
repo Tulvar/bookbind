@@ -7,6 +7,8 @@ type Book struct {
 	Author        string   `yaml:"author"`
 	Narrators     []string `yaml:"narrators"`
 	Narrator      string   `yaml:"narrator"`
+	Translators   []string `yaml:"translators"`
+	Translator    string   `yaml:"translator"`
 	Series        string   `yaml:"series"`
 	SeriesIndex   string   `yaml:"series_index"`
 	Language      string   `yaml:"language"`
@@ -37,11 +39,22 @@ func (b Book) NormalizedNarrators() []string {
 	return nil
 }
 
+func (b Book) NormalizedTranslators() []string {
+	if len(b.Translators) > 0 {
+		return b.Translators
+	}
+	if b.Translator != "" {
+		return []string{b.Translator}
+	}
+	return nil
+}
+
 func (b Book) Empty() bool {
 	return b.Title == "" &&
 		b.Subtitle == "" &&
 		len(b.NormalizedAuthors()) == 0 &&
 		len(b.NormalizedNarrators()) == 0 &&
+		len(b.NormalizedTranslators()) == 0 &&
 		b.Series == "" &&
 		b.SeriesIndex == "" &&
 		b.Language == "" &&

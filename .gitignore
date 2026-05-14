@@ -24,3 +24,4 @@ desktop/build/bin/
 !desktop/frontend/dist/
 desktop/frontend/dist/*
 !desktop/frontend/dist/.gitkeep
+test_book/

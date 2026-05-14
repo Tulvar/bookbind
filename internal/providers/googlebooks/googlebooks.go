@@ -19,6 +19,7 @@ type Provider struct {
 	baseURL    string
 	httpClient *http.Client
 	limit      int
+	apiKey     string
 }
 
 type Option func(*Provider)
@@ -52,6 +53,12 @@ func WithHTTPClient(client *http.Client) Option {
 func WithLimit(limit int) Option {
 	return func(provider *Provider) {
 		provider.limit = limit
+	}
+}
+
+func WithAPIKey(apiKey string) Option {
+	return func(provider *Provider) {
+		provider.apiKey = strings.TrimSpace(apiKey)
 	}
 }
 
@@ -103,7 +110,14 @@ func (p *Provider) Get(ctx context.Context, id string) (providers.Candidate, err
 		return providers.Candidate{}, fmt.Errorf("candidate id is required")
 	}
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, p.baseURL+"/volumes/"+url.PathEscape(id), nil)
+	requestURL := p.baseURL + "/volumes/" + url.PathEscape(id)
+	if p.apiKey != "" {
+		values := url.Values{}
+		values.Set("key", p.apiKey)
+		requestURL += "?" + values.Encode()
+	}
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, requestURL, nil)
 	if err != nil {
 		return providers.Candidate{}, err
 	}
@@ -136,6 +150,9 @@ func (p *Provider) searchURL(query providers.SearchQuery) (string, error) {
 	values.Set("q", googleQuery(query))
 	values.Set("maxResults", strconv.Itoa(p.limit))
 	values.Set("projection", "lite")
+	if p.apiKey != "" {
+		values.Set("key", p.apiKey)
+	}
 	return p.baseURL + "/volumes?" + values.Encode(), nil
 }
 

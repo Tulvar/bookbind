@@ -1,13 +1,6 @@
 name: CI
 
 on:
-  push:
-    branches:
-      - main
-      - init
-      - "release/**"
-      - "feature/**"
-      - "ci/**"
   pull_request:
 
 jobs:

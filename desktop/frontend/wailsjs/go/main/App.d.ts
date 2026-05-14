@@ -7,19 +7,25 @@ export function AppVersion():Promise<string>;
 
 export function AvailableProviders():Promise<Array<app.ProviderInfo>>;
 
+export function CancelConvert():Promise<boolean>;
+
 export function CleanCache(arg1:string):Promise<main.CacheCleanView>;
 
 export function ConvertAudio(arg1:string,arg2:string,arg3:string,arg4:string,arg5:string,arg6:boolean,arg7:boolean):Promise<main.ConvertView>;
+
+export function ConvertAudioWithMetadata(arg1:string,arg2:string,arg3:main.BookMetadataView,arg4:string,arg5:string,arg6:boolean,arg7:boolean):Promise<main.ConvertView>;
 
 export function InspectPath(arg1:string):Promise<main.InspectView>;
 
 export function ListCache(arg1:string):Promise<main.CacheListView>;
 
-export function PreviewMetadata(arg1:string,arg2:string):Promise<main.MetadataPreviewView>;
+export function PrepareConversion(arg1:string,arg2:string,arg3:main.BookMetadataView):Promise<main.ConversionPreparationView>;
 
-export function ResolveMetadata(arg1:string,arg2:string,arg3:string,arg4:boolean):Promise<main.MetadataResolveView>;
+export function PreviewMetadata(arg1:string,arg2:string,arg3:string):Promise<main.MetadataPreviewView>;
 
-export function SearchMetadata(arg1:string,arg2:string,arg3:Array<string>):Promise<main.MetadataSearchView>;
+export function ResolveMetadata(arg1:string,arg2:string,arg3:string,arg4:boolean,arg5:string):Promise<main.MetadataResolveView>;
+
+export function SearchMetadata(arg1:string,arg2:string,arg3:Array<string>,arg4:string):Promise<main.MetadataSearchView>;
 
 export function SelectAudioDirectory():Promise<string>;
 
@@ -30,5 +36,7 @@ export function SelectCacheDirectory():Promise<string>;
 export function SelectCoverFile():Promise<string>;
 
 export function SelectMetadataFile():Promise<string>;
+
+export function SelectMetadataOutputFile():Promise<string>;
 
 export function SelectOutputFile():Promise<string>;

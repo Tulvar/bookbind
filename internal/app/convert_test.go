@@ -2,6 +2,8 @@ package app
 
 import (
 	"context"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"testing"
@@ -9,6 +11,7 @@ import (
 
 	"github.com/Tulvar/bookbind/internal/audio"
 	"github.com/Tulvar/bookbind/internal/m4b"
+	"github.com/Tulvar/bookbind/internal/metadata"
 )
 
 func TestConvertPlansDefaultOutput(t *testing.T) {
@@ -100,6 +103,58 @@ author: "Sergey Lukyanenko"
 	}
 }
 
+func TestConvertUsesInlineMetadata(t *testing.T) {
+	dir := t.TempDir()
+	inputPath := filepath.Join(dir, "book.mp3")
+	if err := os.WriteFile(inputPath, []byte("test"), 0o644); err != nil {
+		t.Fatalf("write input file: %v", err)
+	}
+
+	result, err := newTestApp().Convert(context.Background(), ConvertRequest{
+		InputPath: inputPath,
+		Metadata:  metadata.Book{Title: "Inline Book"},
+		DryRun:    true,
+	})
+	if err != nil {
+		t.Fatalf("Convert() error = %v", err)
+	}
+
+	if got, want := result.Metadata.Title, "Inline Book"; got != want {
+		t.Fatalf("Metadata.Title = %q, want %q", got, want)
+	}
+}
+
+func TestPrepareConversionUsesDirectoryEmbeddedBookTags(t *testing.T) {
+	dir := t.TempDir()
+	for _, name := range []string{"01.mp3", "02.mp3"} {
+		if err := os.WriteFile(filepath.Join(dir, name), []byte("test"), 0o644); err != nil {
+			t.Fatalf("write input file: %v", err)
+		}
+	}
+
+	result, err := newTestAppWithProber(testProber{
+		tags: audio.EmbeddedTags{
+			Album:  "The Book",
+			Artist: "The Author",
+			Genre:  "Audiobook",
+			Date:   "2022",
+		},
+	}).PrepareConversion(context.Background(), PrepareConversionRequest{InputPath: dir})
+	if err != nil {
+		t.Fatalf("PrepareConversion() error = %v", err)
+	}
+
+	if got, want := result.Metadata.Title, "The Book"; got != want {
+		t.Fatalf("Title = %q, want %q", got, want)
+	}
+	if got, want := result.Metadata.Author, "The Author"; got != want {
+		t.Fatalf("Author = %q, want %q", got, want)
+	}
+	if got, want := result.Metadata.PublishedYear, 2022; got != want {
+		t.Fatalf("PublishedYear = %d, want %d", got, want)
+	}
+}
+
 func TestConvertUsesCLICover(t *testing.T) {
 	dir := t.TempDir()
 	inputPath := filepath.Join(dir, "book.mp3")
@@ -153,6 +208,48 @@ cover: "cover.jpg"
 
 	if got, want := result.CoverPath, coverPath; got != want {
 		t.Fatalf("CoverPath = %q, want %q", got, want)
+	}
+}
+
+func TestConvertDownloadsRemoteMetadataCover(t *testing.T) {
+	dir := t.TempDir()
+	cachePath := filepath.Join(dir, "cache")
+	previousCacheDir := cacheDir
+	cacheDir = func() (string, error) { return cachePath, nil }
+	t.Cleanup(func() { cacheDir = previousCacheDir })
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "image/jpeg")
+		_, _ = w.Write([]byte("cover"))
+	}))
+	defer server.Close()
+
+	inputPath := filepath.Join(dir, "book.mp3")
+	metadataPath := filepath.Join(dir, "bookbind.yaml")
+	if err := os.WriteFile(inputPath, []byte("test"), 0o644); err != nil {
+		t.Fatalf("write input file: %v", err)
+	}
+	if err := os.WriteFile(metadataPath, []byte("title: \"Book\"\ncover: \""+server.URL+"/cover?id=book\"\n"), 0o644); err != nil {
+		t.Fatalf("write metadata file: %v", err)
+	}
+
+	result, err := newTestApp().Convert(context.Background(), ConvertRequest{
+		InputPath:    inputPath,
+		MetadataPath: metadataPath,
+		DryRun:       true,
+	})
+	if err != nil {
+		t.Fatalf("Convert() error = %v", err)
+	}
+
+	if result.CoverPath == "" {
+		t.Fatal("CoverPath is empty, want downloaded cover")
+	}
+	if _, err := os.Stat(result.CoverPath); err != nil {
+		t.Fatalf("downloaded cover stat: %v", err)
+	}
+	if filepath.Dir(result.CoverPath) != filepath.Join(cachePath, "covers") {
+		t.Fatalf("CoverPath = %q, want cache covers dir", result.CoverPath)
 	}
 }
 

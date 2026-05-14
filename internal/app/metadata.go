@@ -11,10 +11,11 @@ import (
 )
 
 type ResolveMetadataRequest struct {
-	Provider   string
-	ID         string
-	OutputPath string
-	Overwrite  bool
+	Provider          string
+	ID                string
+	OutputPath        string
+	Overwrite         bool
+	GoogleBooksAPIKey string
 }
 
 type ResolveMetadataResult struct {
@@ -24,8 +25,9 @@ type ResolveMetadataResult struct {
 }
 
 type PreviewMetadataRequest struct {
-	Provider string
-	ID       string
+	Provider          string
+	ID                string
+	GoogleBooksAPIKey string
 }
 
 type PreviewMetadataResult struct {
@@ -34,7 +36,7 @@ type PreviewMetadataResult struct {
 }
 
 func (a *App) PreviewMetadata(ctx context.Context, req PreviewMetadataRequest) (PreviewMetadataResult, error) {
-	candidate, err := a.getMetadataCandidate(ctx, req.Provider, req.ID)
+	candidate, err := a.getMetadataCandidate(ctx, req.Provider, req.ID, req.GoogleBooksAPIKey)
 	if err != nil {
 		return PreviewMetadataResult{}, err
 	}
@@ -46,7 +48,7 @@ func (a *App) PreviewMetadata(ctx context.Context, req PreviewMetadataRequest) (
 }
 
 func (a *App) ResolveMetadata(ctx context.Context, req ResolveMetadataRequest) (ResolveMetadataResult, error) {
-	candidate, err := a.getMetadataCandidate(ctx, req.Provider, req.ID)
+	candidate, err := a.getMetadataCandidate(ctx, req.Provider, req.ID, req.GoogleBooksAPIKey)
 	if err != nil {
 		return ResolveMetadataResult{}, err
 	}
@@ -78,7 +80,7 @@ func (a *App) ResolveMetadata(ctx context.Context, req ResolveMetadataRequest) (
 	}, nil
 }
 
-func (a *App) getMetadataCandidate(ctx context.Context, provider, id string) (providers.Candidate, error) {
+func (a *App) getMetadataCandidate(ctx context.Context, provider, id, googleBooksAPIKey string) (providers.Candidate, error) {
 	if a.providers == nil {
 		return providers.Candidate{}, fmt.Errorf("metadata providers are not configured")
 	}
@@ -86,6 +88,15 @@ func (a *App) getMetadataCandidate(ctx context.Context, provider, id string) (pr
 	providerName := strings.TrimSpace(provider)
 	if canonicalName, err := CanonicalProviderName(providerName); err == nil {
 		providerName = canonicalName
+	}
+	if strings.TrimSpace(googleBooksAPIKey) != "" && providerName == "googlebooks" {
+		registry, err := NewProviderRegistryWithConfig([]string{providerName}, ProviderConfig{
+			GoogleBooksAPIKey: googleBooksAPIKey,
+		})
+		if err != nil {
+			return providers.Candidate{}, err
+		}
+		return registry.Get(ctx, providerName, strings.TrimSpace(id))
 	}
 
 	candidate, err := a.providers.Get(ctx, providerName, strings.TrimSpace(id))
@@ -110,6 +121,9 @@ func bookFromCandidate(candidate providers.Candidate) metadata.Book {
 	}
 	if len(book.Narrators) > 0 {
 		book.Narrator = strings.Join(book.Narrators, ", ")
+	}
+	if len(book.Translators) > 0 {
+		book.Translator = strings.Join(book.Translators, ", ")
 	}
 	return book
 }

@@ -90,6 +90,29 @@ func TestSearch(t *testing.T) {
 	}
 }
 
+func TestSearchAddsAPIKey(t *testing.T) {
+	var gotKey string
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotKey = r.URL.Query().Get("key")
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"items":[]}`))
+	}))
+	defer server.Close()
+
+	provider := New(
+		WithBaseURL(server.URL),
+		WithHTTPClient(server.Client()),
+		WithAPIKey("test-key"),
+	)
+
+	if _, err := provider.Search(context.Background(), providers.SearchQuery{Title: "Book"}); err != nil {
+		t.Fatalf("Search() error = %v", err)
+	}
+	if gotKey != "test-key" {
+		t.Fatalf("key = %q, want test-key", gotKey)
+	}
+}
+
 func TestGet(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path != "/volumes/volume-1" {
@@ -112,6 +135,29 @@ func TestGet(t *testing.T) {
 	}
 	if got.Title != "Book" {
 		t.Fatalf("Title = %q", got.Title)
+	}
+}
+
+func TestGetAddsAPIKey(t *testing.T) {
+	var gotKey string
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotKey = r.URL.Query().Get("key")
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"id":"volume-1","volumeInfo":{"title":"Book"}}`))
+	}))
+	defer server.Close()
+
+	provider := New(
+		WithBaseURL(server.URL),
+		WithHTTPClient(server.Client()),
+		WithAPIKey("test-key"),
+	)
+
+	if _, err := provider.Get(context.Background(), "volume-1"); err != nil {
+		t.Fatalf("Get() error = %v", err)
+	}
+	if gotKey != "test-key" {
+		t.Fatalf("key = %q, want test-key", gotKey)
 	}
 }
 

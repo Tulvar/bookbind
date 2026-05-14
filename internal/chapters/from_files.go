@@ -32,6 +32,10 @@ func FromAudioFiles(files []audio.File) ([]Chapter, error) {
 }
 
 func chapterTitle(index int, file audio.File) string {
+	title := strings.TrimSpace(file.Tags.Title)
+	if title != "" {
+		return title
+	}
 	name := strings.TrimSuffix(file.Name, filepath.Ext(file.Name))
 	name = strings.TrimSpace(name)
 	if name == "" {

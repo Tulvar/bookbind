@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/Tulvar/bookbind/internal/providers"
+	"github.com/Tulvar/bookbind/internal/providers/fantlab"
 	"github.com/Tulvar/bookbind/internal/providers/googlebooks"
 	"github.com/Tulvar/bookbind/internal/providers/openlibrary"
 )
@@ -18,19 +19,32 @@ type ProviderInfo struct {
 func AvailableProviders() []ProviderInfo {
 	return []ProviderInfo{
 		{Name: "openlibrary", Enabled: true},
+		{Name: "fantlab", Enabled: true},
 		{Name: "googlebooks", Enabled: true},
 	}
 }
 
+type ProviderConfig struct {
+	GoogleBooksAPIKey string
+}
+
 func NewProviderRegistry(names []string) (*providers.Registry, error) {
+	return NewProviderRegistryWithConfig(names, ProviderConfig{})
+}
+
+func NewProviderRegistryWithConfig(names []string, config ProviderConfig) (*providers.Registry, error) {
 	cachePath, err := CacheDir()
 	if err != nil {
 		return nil, err
 	}
-	return NewProviderRegistryWithCache(names, cachePath)
+	return NewProviderRegistryWithCacheAndConfig(names, cachePath, config)
 }
 
 func NewProviderRegistryWithCache(names []string, cachePath string) (*providers.Registry, error) {
+	return NewProviderRegistryWithCacheAndConfig(names, cachePath, ProviderConfig{})
+}
+
+func NewProviderRegistryWithCacheAndConfig(names []string, cachePath string, config ProviderConfig) (*providers.Registry, error) {
 	if len(names) == 0 {
 		names = defaultProviderNames()
 	}
@@ -38,7 +52,7 @@ func NewProviderRegistryWithCache(names []string, cachePath string) (*providers.
 	cache := providers.NewCache(cachePath)
 	selected := make([]providers.Provider, 0, len(names))
 	for _, name := range names {
-		provider, err := providerByName(name)
+		provider, err := providerByName(name, config)
 		if err != nil {
 			return nil, err
 		}
@@ -57,7 +71,7 @@ func ProviderNamesCSV(infos []ProviderInfo) string {
 }
 
 func CanonicalProviderName(name string) (string, error) {
-	provider, err := providerByName(name)
+	provider, err := providerByName(name, ProviderConfig{})
 	if err != nil {
 		return "", err
 	}
@@ -65,15 +79,17 @@ func CanonicalProviderName(name string) (string, error) {
 }
 
 func defaultProviderNames() []string {
-	return []string{"openlibrary", "googlebooks"}
+	return []string{"openlibrary", "fantlab", "googlebooks"}
 }
 
-func providerByName(name string) (providers.Provider, error) {
+func providerByName(name string, config ProviderConfig) (providers.Provider, error) {
 	switch strings.ToLower(strings.TrimSpace(name)) {
 	case "openlibrary":
 		return openlibrary.New(), nil
+	case "fantlab":
+		return fantlab.New(), nil
 	case "googlebooks", "google":
-		return googlebooks.New(), nil
+		return googlebooks.New(googlebooks.WithAPIKey(config.GoogleBooksAPIKey)), nil
 	default:
 		return nil, fmt.Errorf("unknown provider %q", name)
 	}

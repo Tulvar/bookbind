@@ -105,6 +105,33 @@ func TestBuildSingleFileWithSyntheticChaptersMapsChapters(t *testing.T) {
 	}
 }
 
+func TestBuildSingleFileUsesEmbeddedChapters(t *testing.T) {
+	builder := NewBuilder("ffmpeg")
+
+	result, err := builder.Build(context.Background(), BuildRequest{
+		Input: audio.Input{
+			Files: []audio.File{{
+				Path:     "book.mp3",
+				Duration: time.Minute,
+				Chapters: []audio.Chapter{{
+					Title: "Embedded Intro",
+					Start: 0,
+					End:   time.Minute,
+				}},
+			}},
+		},
+		OutputPath: "book.m4b",
+		DryRun:     true,
+	})
+	if err != nil {
+		t.Fatalf("Build() error = %v", err)
+	}
+
+	if !containsInOrder(result.Command, "-map_metadata", "1", "-c:a", "aac", "-map_chapters", "1") {
+		t.Fatalf("command does not map embedded chapters: %#v", result.Command)
+	}
+}
+
 func TestBuildSingleFileWithSyntheticChaptersRequiresDuration(t *testing.T) {
 	builder := NewBuilder("ffmpeg")
 

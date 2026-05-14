@@ -39,6 +39,7 @@ func MarshalTemplateYAML(book Book) ([]byte, error) {
 		Title:             book.Title,
 		Author:            book.Author,
 		Narrator:          book.Narrator,
+		Translator:        book.Translator,
 		Series:            book.Series,
 		SeriesIndex:       book.SeriesIndex,
 		Language:          book.Language,
@@ -63,6 +64,7 @@ type yamlTemplate struct {
 	Title             string `yaml:"title"`
 	Author            string `yaml:"author"`
 	Narrator          string `yaml:"narrator"`
+	Translator        string `yaml:"translator"`
 	Series            string `yaml:"series"`
 	SeriesIndex       string `yaml:"series_index"`
 	Language          string `yaml:"language"`

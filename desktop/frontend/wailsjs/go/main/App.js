@@ -10,12 +10,20 @@ export function AvailableProviders() {
   return window['go']['main']['App']['AvailableProviders']();
 }
 
+export function CancelConvert() {
+  return window['go']['main']['App']['CancelConvert']();
+}
+
 export function CleanCache(arg1) {
   return window['go']['main']['App']['CleanCache'](arg1);
 }
 
 export function ConvertAudio(arg1, arg2, arg3, arg4, arg5, arg6, arg7) {
   return window['go']['main']['App']['ConvertAudio'](arg1, arg2, arg3, arg4, arg5, arg6, arg7);
+}
+
+export function ConvertAudioWithMetadata(arg1, arg2, arg3, arg4, arg5, arg6, arg7) {
+  return window['go']['main']['App']['ConvertAudioWithMetadata'](arg1, arg2, arg3, arg4, arg5, arg6, arg7);
 }
 
 export function InspectPath(arg1) {
@@ -26,16 +34,20 @@ export function ListCache(arg1) {
   return window['go']['main']['App']['ListCache'](arg1);
 }
 
-export function PreviewMetadata(arg1, arg2) {
-  return window['go']['main']['App']['PreviewMetadata'](arg1, arg2);
+export function PrepareConversion(arg1, arg2, arg3) {
+  return window['go']['main']['App']['PrepareConversion'](arg1, arg2, arg3);
 }
 
-export function ResolveMetadata(arg1, arg2, arg3, arg4) {
-  return window['go']['main']['App']['ResolveMetadata'](arg1, arg2, arg3, arg4);
+export function PreviewMetadata(arg1, arg2, arg3) {
+  return window['go']['main']['App']['PreviewMetadata'](arg1, arg2, arg3);
 }
 
-export function SearchMetadata(arg1, arg2, arg3) {
-  return window['go']['main']['App']['SearchMetadata'](arg1, arg2, arg3);
+export function ResolveMetadata(arg1, arg2, arg3, arg4, arg5) {
+  return window['go']['main']['App']['ResolveMetadata'](arg1, arg2, arg3, arg4, arg5);
+}
+
+export function SearchMetadata(arg1, arg2, arg3, arg4) {
+  return window['go']['main']['App']['SearchMetadata'](arg1, arg2, arg3, arg4);
 }
 
 export function SelectAudioDirectory() {
@@ -56,6 +68,10 @@ export function SelectCoverFile() {
 
 export function SelectMetadataFile() {
   return window['go']['main']['App']['SelectMetadataFile']();
+}
+
+export function SelectMetadataOutputFile() {
+  return window['go']['main']['App']['SelectMetadataOutputFile']();
 }
 
 export function SelectOutputFile() {

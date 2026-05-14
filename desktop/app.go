@@ -1,15 +1,20 @@
 package main
 
 import (
+	"bufio"
 	"context"
 	"fmt"
+	"io"
 	"path/filepath"
+	"regexp"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	coreapp "github.com/Tulvar/bookbind/internal/app"
 	"github.com/Tulvar/bookbind/internal/audio"
+	"github.com/Tulvar/bookbind/internal/m4b"
 	"github.com/Tulvar/bookbind/internal/metadata"
 	"github.com/Tulvar/bookbind/internal/providers"
 	"github.com/Tulvar/bookbind/pkg/version"
@@ -17,14 +22,32 @@ import (
 )
 
 type App struct {
-	ctx  context.Context
-	core *coreapp.App
+	ctx           context.Context
+	core          *coreapp.App
+	convertMu     sync.Mutex
+	convertCancel context.CancelFunc
+	convertID     int
 }
 
 func NewApp() *App {
 	return &App{
-		core: coreapp.New(),
+		core: coreapp.New(coreapp.WithBuilder(&m4b.Builder{
+			FFmpegPath: "ffmpeg",
+			Runner:     &desktopProgressRunner{},
+		})),
 	}
+}
+
+type desktopProgressRunner struct {
+	writer io.Writer
+}
+
+func (r *desktopProgressRunner) SetProgressWriter(writer io.Writer) {
+	r.writer = writer
+}
+
+func (r *desktopProgressRunner) Run(ctx context.Context, name string, args ...string) error {
+	return m4b.ReportingRunner{Writer: r.writer}.Run(ctx, name, args...)
 }
 
 func (a *App) startup(ctx context.Context) {
@@ -64,6 +87,17 @@ func (a *App) SelectCacheDirectory() (string, error) {
 func (a *App) SelectMetadataFile() (string, error) {
 	return wailsruntime.OpenFileDialog(a.dialogContext(), wailsruntime.OpenDialogOptions{
 		Title: "Select metadata YAML",
+		Filters: []wailsruntime.FileFilter{
+			{DisplayName: "YAML metadata", Pattern: "*.yaml;*.yml"},
+			{DisplayName: "All files", Pattern: "*.*"},
+		},
+	})
+}
+
+func (a *App) SelectMetadataOutputFile() (string, error) {
+	return wailsruntime.SaveFileDialog(a.dialogContext(), wailsruntime.SaveDialogOptions{
+		Title:           "Save metadata YAML",
+		DefaultFilename: "bookbind.yaml",
 		Filters: []wailsruntime.FileFilter{
 			{DisplayName: "YAML metadata", Pattern: "*.yaml;*.yml"},
 			{DisplayName: "All files", Pattern: "*.*"},
@@ -170,6 +204,8 @@ type BookMetadataView struct {
 	Author        string
 	Narrators     []string
 	Narrator      string
+	Translators   []string
+	Translator    string
 	Series        string
 	SeriesIndex   string
 	Language      string
@@ -191,11 +227,18 @@ type MetadataResolveView struct {
 	Book       BookMetadataView
 }
 
-func (a *App) SearchMetadata(title, author string, providerNames []string) (MetadataSearchView, error) {
+type ConversionPreparationView struct {
+	Book    BookMetadataView
+	Missing []string
+	Files   int
+}
+
+func (a *App) SearchMetadata(title, author string, providerNames []string, googleBooksAPIKey string) (MetadataSearchView, error) {
 	result, err := a.core.SearchMetadata(a.dialogContext(), coreapp.SearchRequest{
-		Title:     strings.TrimSpace(title),
-		Author:    strings.TrimSpace(author),
-		Providers: providerNames,
+		Title:             strings.TrimSpace(title),
+		Author:            strings.TrimSpace(author),
+		Providers:         providerNames,
+		GoogleBooksAPIKey: strings.TrimSpace(googleBooksAPIKey),
 	})
 	if err != nil {
 		return MetadataSearchView{}, err
@@ -208,10 +251,11 @@ func (a *App) SearchMetadata(title, author string, providerNames []string) (Meta
 	return MetadataSearchView{Candidates: candidates}, nil
 }
 
-func (a *App) PreviewMetadata(provider, id string) (MetadataPreviewView, error) {
+func (a *App) PreviewMetadata(provider, id, googleBooksAPIKey string) (MetadataPreviewView, error) {
 	result, err := a.core.PreviewMetadata(a.dialogContext(), coreapp.PreviewMetadataRequest{
-		Provider: provider,
-		ID:       id,
+		Provider:          provider,
+		ID:                id,
+		GoogleBooksAPIKey: strings.TrimSpace(googleBooksAPIKey),
 	})
 	if err != nil {
 		return MetadataPreviewView{}, err
@@ -223,12 +267,13 @@ func (a *App) PreviewMetadata(provider, id string) (MetadataPreviewView, error) 
 	}, nil
 }
 
-func (a *App) ResolveMetadata(provider, id, outputPath string, overwrite bool) (MetadataResolveView, error) {
+func (a *App) ResolveMetadata(provider, id, outputPath string, overwrite bool, googleBooksAPIKey string) (MetadataResolveView, error) {
 	result, err := a.core.ResolveMetadata(a.dialogContext(), coreapp.ResolveMetadataRequest{
-		Provider:   provider,
-		ID:         id,
-		OutputPath: outputPath,
-		Overwrite:  overwrite,
+		Provider:          provider,
+		ID:                id,
+		OutputPath:        outputPath,
+		Overwrite:         overwrite,
+		GoogleBooksAPIKey: strings.TrimSpace(googleBooksAPIKey),
 	})
 	if err != nil {
 		return MetadataResolveView{}, err
@@ -238,6 +283,22 @@ func (a *App) ResolveMetadata(provider, id, outputPath string, overwrite bool) (
 		OutputPath: result.OutputPath,
 		Candidate:  candidateView(result.Candidate),
 		Book:       bookView(result.Book),
+	}, nil
+}
+
+func (a *App) PrepareConversion(inputPath, metadataPath string, inlineMetadata BookMetadataView) (ConversionPreparationView, error) {
+	result, err := a.core.PrepareConversion(a.dialogContext(), coreapp.PrepareConversionRequest{
+		InputPath:    strings.TrimSpace(inputPath),
+		MetadataPath: strings.TrimSpace(metadataPath),
+		Metadata:     bookFromView(inlineMetadata),
+	})
+	if err != nil {
+		return ConversionPreparationView{}, err
+	}
+	return ConversionPreparationView{
+		Book:    bookView(result.Metadata),
+		Missing: result.Missing,
+		Files:   len(result.Input.Files),
 	}, nil
 }
 
@@ -314,15 +375,81 @@ type ConvertView struct {
 	Status       string
 }
 
+type ConvertProgressEvent struct {
+	Phase   string
+	Line    string
+	Percent int
+	Elapsed string
+	Total   string
+}
+
 func (a *App) ConvertAudio(inputPath, outputPath, metadataPath, coverPath, chapterEvery string, dryRun, overwrite bool) (ConvertView, error) {
-	result, err := a.core.Convert(a.dialogContext(), coreapp.ConvertRequest{
+	return a.convertAudio(inputPath, outputPath, metadataPath, BookMetadataView{}, coverPath, chapterEvery, dryRun, overwrite)
+}
+
+func (a *App) ConvertAudioWithMetadata(inputPath, outputPath string, metadata BookMetadataView, coverPath, chapterEvery string, dryRun, overwrite bool) (ConvertView, error) {
+	return a.convertAudio(inputPath, outputPath, "", metadata, coverPath, chapterEvery, dryRun, overwrite)
+}
+
+func (a *App) CancelConvert() bool {
+	a.convertMu.Lock()
+	defer a.convertMu.Unlock()
+	if a.convertCancel == nil {
+		return false
+	}
+	a.convertCancel()
+	return true
+}
+
+func (a *App) convertAudio(inputPath, outputPath, metadataPath string, inlineMetadata BookMetadataView, coverPath, chapterEvery string, dryRun, overwrite bool) (ConvertView, error) {
+	ctx := a.dialogContext()
+	var cancel context.CancelFunc
+	convertID := 0
+	if !dryRun {
+		ctx, cancel = context.WithCancel(ctx)
+		a.convertMu.Lock()
+		if a.convertCancel != nil {
+			a.convertCancel()
+		}
+		a.convertID++
+		convertID = a.convertID
+		a.convertCancel = cancel
+		a.convertMu.Unlock()
+		defer func() {
+			a.convertMu.Lock()
+			if a.convertID == convertID {
+				a.convertCancel = nil
+			}
+			a.convertMu.Unlock()
+			cancel()
+		}()
+	}
+
+	var progress *convertProgressWriter
+	if !dryRun {
+		progress = newConvertProgressWriter(ctx, 0)
+		if inspect, inspectErr := a.core.InspectInput(ctx, coreapp.InspectRequest{InputPath: strings.TrimSpace(inputPath)}); inspectErr == nil {
+			for _, file := range inspect.Input.Files {
+				progress.total += file.Duration
+			}
+			wailsruntime.EventsEmit(ctx, "convert:progress", ConvertProgressEvent{
+				Phase:   "converting",
+				Line:    "ffmpeg started",
+				Percent: 0,
+				Total:   formatDuration(progress.total),
+			})
+		}
+	}
+	result, err := a.core.Convert(ctx, coreapp.ConvertRequest{
 		InputPath:    strings.TrimSpace(inputPath),
 		OutputPath:   strings.TrimSpace(outputPath),
 		MetadataPath: strings.TrimSpace(metadataPath),
+		Metadata:     bookFromView(inlineMetadata),
 		CoverPath:    strings.TrimSpace(coverPath),
 		ChapterEvery: strings.TrimSpace(chapterEvery),
 		DryRun:       dryRun,
 		Overwrite:    overwrite,
+		Progress:     progress,
 	})
 	if err != nil {
 		return ConvertView{}, err
@@ -363,6 +490,78 @@ func (a *App) ConvertAudio(inputPath, outputPath, metadataPath, coverPath, chapt
 	}, nil
 }
 
+var ffmpegTimePattern = regexp.MustCompile(`time=(\d+):(\d+):(\d+(?:\.\d+)?)`)
+
+type convertProgressWriter struct {
+	ctx   context.Context
+	total time.Duration
+}
+
+func newConvertProgressWriter(ctx context.Context, total time.Duration) *convertProgressWriter {
+	return &convertProgressWriter{ctx: ctx, total: total}
+}
+
+func (w *convertProgressWriter) Write(data []byte) (int, error) {
+	scanner := bufio.NewScanner(strings.NewReader(string(data)))
+	scanner.Split(scanProgressLines)
+	for scanner.Scan() {
+		line := strings.TrimSpace(scanner.Text())
+		if line == "" {
+			continue
+		}
+		event := ConvertProgressEvent{
+			Phase: "converting",
+			Line:  line,
+		}
+		if elapsed := parseFFmpegProgressTime(line); elapsed > 0 {
+			event.Elapsed = formatDuration(elapsed)
+			event.Total = formatDuration(w.total)
+			if w.total > 0 {
+				event.Percent = int(elapsed * 100 / w.total)
+				if event.Percent > 99 {
+					event.Percent = 99
+				}
+			}
+		}
+		wailsruntime.EventsEmit(w.ctx, "convert:progress", event)
+	}
+	return len(data), scanner.Err()
+}
+
+func scanProgressLines(data []byte, atEOF bool) (advance int, token []byte, err error) {
+	for index, value := range data {
+		if value == '\n' || value == '\r' {
+			return index + 1, data[0:index], nil
+		}
+	}
+	if atEOF && len(data) > 0 {
+		return len(data), data, nil
+	}
+	return 0, nil, nil
+}
+
+func parseFFmpegProgressTime(line string) time.Duration {
+	match := ffmpegTimePattern.FindStringSubmatch(line)
+	if len(match) != 4 {
+		return 0
+	}
+	hours, err := strconv.Atoi(match[1])
+	if err != nil {
+		return 0
+	}
+	minutes, err := strconv.Atoi(match[2])
+	if err != nil {
+		return 0
+	}
+	seconds, err := strconv.ParseFloat(match[3], 64)
+	if err != nil {
+		return 0
+	}
+	return time.Duration(hours)*time.Hour +
+		time.Duration(minutes)*time.Minute +
+		time.Duration(seconds*float64(time.Second))
+}
+
 func candidateView(candidate providers.Candidate) MetadataCandidateView {
 	return MetadataCandidateView{
 		Provider:    candidate.Provider,
@@ -387,6 +586,29 @@ func bookView(book metadata.Book) BookMetadataView {
 		Author:        book.Author,
 		Narrators:     book.Narrators,
 		Narrator:      book.Narrator,
+		Translators:   book.Translators,
+		Translator:    book.Translator,
+		Series:        book.Series,
+		SeriesIndex:   book.SeriesIndex,
+		Language:      book.Language,
+		Genre:         book.Genre,
+		Description:   book.Description,
+		Publisher:     book.Publisher,
+		PublishedYear: book.PublishedYear,
+		Cover:         book.Cover,
+	}
+}
+
+func bookFromView(book BookMetadataView) metadata.Book {
+	return metadata.Book{
+		Title:         book.Title,
+		Subtitle:      book.Subtitle,
+		Authors:       book.Authors,
+		Author:        book.Author,
+		Narrators:     book.Narrators,
+		Narrator:      book.Narrator,
+		Translators:   book.Translators,
+		Translator:    book.Translator,
 		Series:        book.Series,
 		SeriesIndex:   book.SeriesIndex,
 		Language:      book.Language,
