@@ -2,6 +2,7 @@ package m4b
 
 import (
 	"context"
+	"os"
 	"path/filepath"
 	"testing"
 	"time"
@@ -10,7 +11,7 @@ import (
 )
 
 func TestBuildDryRunSingleFilePlansCommand(t *testing.T) {
-	builder := NewBuilder("ffmpeg")
+	builder := testBuilder()
 
 	result, err := builder.Build(context.Background(), BuildRequest{
 		Input: audio.Input{
@@ -33,7 +34,7 @@ func TestBuildDryRunSingleFilePlansCommand(t *testing.T) {
 
 func TestBuildRunsFFmpeg(t *testing.T) {
 	runner := &fakeRunner{}
-	builder := NewBuilder("ffmpeg")
+	builder := testBuilder()
 	builder.Runner = runner
 
 	_, err := builder.Build(context.Background(), BuildRequest{
@@ -56,8 +57,22 @@ func TestBuildRunsFFmpeg(t *testing.T) {
 	}
 }
 
-func TestBuildSingleFileWithCoverMapsAttachedPicture(t *testing.T) {
+func TestNewBuilderResolvesFFmpegFromPath(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "ffmpeg")
+	if err := os.WriteFile(path, []byte("#!/bin/sh\n"), 0o755); err != nil {
+		t.Fatalf("write ffmpeg: %v", err)
+	}
+	t.Setenv("PATH", dir)
+
 	builder := NewBuilder("ffmpeg")
+	if builder.FFmpegPath != path {
+		t.Fatalf("FFmpegPath = %q, want %q", builder.FFmpegPath, path)
+	}
+}
+
+func TestBuildSingleFileWithCoverMapsAttachedPicture(t *testing.T) {
+	builder := testBuilder()
 
 	result, err := builder.Build(context.Background(), BuildRequest{
 		Input: audio.Input{
@@ -86,7 +101,7 @@ func TestBuildSingleFileWithCoverMapsAttachedPicture(t *testing.T) {
 }
 
 func TestBuildSingleFileWithSyntheticChaptersMapsChapters(t *testing.T) {
-	builder := NewBuilder("ffmpeg")
+	builder := testBuilder()
 
 	result, err := builder.Build(context.Background(), BuildRequest{
 		Input: audio.Input{
@@ -106,7 +121,7 @@ func TestBuildSingleFileWithSyntheticChaptersMapsChapters(t *testing.T) {
 }
 
 func TestBuildSingleFileUsesEmbeddedChapters(t *testing.T) {
-	builder := NewBuilder("ffmpeg")
+	builder := testBuilder()
 
 	result, err := builder.Build(context.Background(), BuildRequest{
 		Input: audio.Input{
@@ -133,7 +148,7 @@ func TestBuildSingleFileUsesEmbeddedChapters(t *testing.T) {
 }
 
 func TestBuildSingleFileWithSyntheticChaptersRequiresDuration(t *testing.T) {
-	builder := NewBuilder("ffmpeg")
+	builder := testBuilder()
 
 	_, err := builder.Build(context.Background(), BuildRequest{
 		Input: audio.Input{
@@ -149,7 +164,7 @@ func TestBuildSingleFileWithSyntheticChaptersRequiresDuration(t *testing.T) {
 }
 
 func TestBuildDirectoryUsesConcatDemuxer(t *testing.T) {
-	builder := NewBuilder("ffmpeg")
+	builder := testBuilder()
 
 	result, err := builder.Build(context.Background(), BuildRequest{
 		Input: audio.Input{
@@ -165,7 +180,7 @@ func TestBuildDirectoryUsesConcatDemuxer(t *testing.T) {
 		t.Fatalf("Build() error = %v", err)
 	}
 
-	if got, want := result.Command[0], "ffmpeg"; got != want {
+	if got, want := filepath.Base(result.Command[0]), "ffmpeg"; got != want {
 		t.Fatalf("command[0] = %q, want %q", got, want)
 	}
 	if !containsInOrder(result.Command, "-f", "concat", "-safe", "0", "-i") {
@@ -177,7 +192,7 @@ func TestBuildDirectoryUsesConcatDemuxer(t *testing.T) {
 }
 
 func TestBuildDirectoryWithCoverMapsAttachedPicture(t *testing.T) {
-	builder := NewBuilder("ffmpeg")
+	builder := testBuilder()
 
 	result, err := builder.Build(context.Background(), BuildRequest{
 		Input: audio.Input{
@@ -206,7 +221,7 @@ func TestBuildDirectoryWithCoverMapsAttachedPicture(t *testing.T) {
 }
 
 func TestBuildDirectoryRejectsMissingDurations(t *testing.T) {
-	builder := NewBuilder("ffmpeg")
+	builder := testBuilder()
 
 	_, err := builder.Build(context.Background(), BuildRequest{
 		Input: audio.Input{
@@ -220,6 +235,13 @@ func TestBuildDirectoryRejectsMissingDurations(t *testing.T) {
 	})
 	if err == nil {
 		t.Fatal("Build() error = nil, want error")
+	}
+}
+
+func testBuilder() *Builder {
+	return &Builder{
+		FFmpegPath: "ffmpeg",
+		Runner:     ExecRunner{},
 	}
 }
 

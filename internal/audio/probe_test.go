@@ -1,6 +1,8 @@
 package audio
 
 import (
+	"os"
+	"path/filepath"
 	"testing"
 	"time"
 )
@@ -63,5 +65,19 @@ func TestChaptersParsesFFProbeChapters(t *testing.T) {
 	}
 	if got[1].Title != "Chapter 002" || got[1].Start != time.Minute || got[1].End != 2*time.Minute {
 		t.Fatalf("second chapter = %#v", got[1])
+	}
+}
+
+func TestNewFFProbeResolvesFromPath(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "ffprobe")
+	if err := os.WriteFile(path, []byte("#!/bin/sh\n"), 0o755); err != nil {
+		t.Fatalf("write ffprobe: %v", err)
+	}
+	t.Setenv("PATH", dir)
+
+	prober := NewFFProbe("ffprobe")
+	if prober.Path != path {
+		t.Fatalf("Path = %q, want %q", prober.Path, path)
 	}
 }

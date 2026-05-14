@@ -4,11 +4,14 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os/exec"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/Tulvar/bookbind/internal/ffmpeg"
 )
 
 type Prober interface {
@@ -23,6 +26,7 @@ func NewFFProbe(path string) *FFProbe {
 	if path == "" {
 		path = "ffprobe"
 	}
+	path = ffmpeg.ResolveBinary(path)
 	return &FFProbe{Path: path}
 }
 
@@ -43,6 +47,9 @@ func (p *FFProbe) Probe(ctx context.Context, path string) (ProbeResult, error) {
 	if err := cmd.Run(); err != nil {
 		if stderr.Len() > 0 {
 			return ProbeResult{}, fmt.Errorf("ffprobe %s: %s", path, stderr.String())
+		}
+		if isExecutableNotFound(err) {
+			return ProbeResult{}, fmt.Errorf("ffprobe %s: ffprobe not found. Install ffmpeg, or put ffprobe on PATH", path)
 		}
 		return ProbeResult{}, fmt.Errorf("ffprobe %s: %w", path, err)
 	}
@@ -71,6 +78,10 @@ func (p *FFProbe) Probe(ctx context.Context, path string) (ProbeResult, error) {
 		Tags:     embeddedTags(data.Format.Tags),
 		Chapters: chapters(data.Chapters),
 	}, nil
+}
+
+func isExecutableNotFound(err error) bool {
+	return errors.Is(err, exec.ErrNotFound)
 }
 
 type ffprobeOutput struct {
