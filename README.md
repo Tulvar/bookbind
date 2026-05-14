@@ -144,15 +144,14 @@ git tag v0.4.2
 git push origin v0.4.2
 ```
 
-The release workflow runs on the self-hosted Linux runner. It cross-builds CLI
-artifacts named with the version, for example `bookbind-v0.4.2-linux-amd64` and
-`bookbind-v0.4.2-windows-amd64.exe`.
+The release workflow builds CLI artifacts named with the version, for example
+`bookbind-v0.4.2-linux-amd64` and `bookbind-v0.4.2-windows-amd64.exe`.
 
-The desktop release workflow currently builds only the Linux desktop artifact:
-`bookbind-desktop-v0.4.2-linux-amd64.tar.gz`.
+It also builds desktop artifacts named like
+`bookbind-desktop-v0.4.2-darwin-arm64.zip`.
 
-macOS and Windows desktop builds can still be created manually on machines with
-the matching operating system:
+Desktop builds can also be created manually on machines with the matching
+operating system:
 
 ```bash
 cd desktop
@@ -175,7 +174,7 @@ runs.
 - React/TypeScript frontend
 - Go bridge over the existing app use cases
 - import, metadata, convert, and cache screens
-- Linux desktop release build and CI smoke checks on a self-hosted runner
+- desktop build and CI smoke checks
 
 ### v0.3.0
 

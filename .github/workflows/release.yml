@@ -17,7 +17,7 @@ permissions:
 jobs:
   build:
     name: Build ${{ matrix.goos }}-${{ matrix.goarch }}
-    runs-on: [self-hosted, linux, x64]
+    runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
@@ -87,29 +87,40 @@ jobs:
           files: dist/*
 
   desktop:
-    name: Build desktop linux-amd64
-    runs-on: [self-hosted, linux, x64]
+    name: Build desktop ${{ matrix.target }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: linux-amd64
+            os: ubuntu-22.04
+            platform: linux/amd64
+          - target: darwin-amd64
+            os: macos-latest
+            platform: darwin/amd64
+          - target: darwin-arm64
+            os: macos-latest
+            platform: darwin/arm64
+          - target: windows-amd64
+            os: windows-latest
+            platform: windows/amd64
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
       - name: Install Wails Linux dependencies
+        if: runner.os == 'Linux'
         env:
           DEBIAN_FRONTEND: noninteractive
         run: |
-          missing=()
-          command -v gcc >/dev/null || missing+=(build-essential)
-          command -v pkg-config >/dev/null || missing+=(pkg-config)
-          pkg-config --exists gtk+-3.0 || missing+=(libgtk-3-dev)
-          pkg-config --exists webkit2gtk-4.0 || missing+=(libwebkit2gtk-4.0-dev)
-          if [ "${#missing[@]}" -eq 0 ]; then
-            echo "Wails Linux dependencies already installed."
-            exit 0
-          fi
           sudo apt-get update -o Acquire::Retries=3
           sudo apt-get install -y --no-install-recommends \
-            "${missing[@]}"
+            build-essential \
+            libgtk-3-dev \
+            libwebkit2gtk-4.0-dev \
+            pkg-config
 
       - name: Set up Go
         uses: actions/setup-go@v5
@@ -143,20 +154,44 @@ jobs:
 
       - name: Build desktop app
         working-directory: desktop
-        run: wails build -platform linux/amd64 -ldflags "-s -w -X github.com/Tulvar/bookbind/pkg/version.Version=${{ steps.version.outputs.version }}"
+        run: wails build -platform ${{ matrix.platform }} -ldflags "-s -w -X github.com/Tulvar/bookbind/pkg/version.Version=${{ steps.version.outputs.version }}"
 
       - name: Package Linux desktop
+        if: runner.os == 'Linux'
         shell: bash
         run: |
           mkdir -p dist
-          tar -czf "dist/bookbind-desktop-${{ steps.version.outputs.version }}-linux-amd64.tar.gz" \
+          tar -czf "dist/bookbind-desktop-${{ steps.version.outputs.version }}-${{ matrix.target }}.tar.gz" \
             -C desktop/build/bin \
             bookbind-desktop
+
+      - name: Package macOS desktop
+        if: runner.os == 'macOS'
+        shell: bash
+        run: |
+          mkdir -p dist
+          ditto -c -k --sequesterRsrc --keepParent \
+            desktop/build/bin/bookbind-desktop.app \
+            "dist/bookbind-desktop-${{ steps.version.outputs.version }}-${{ matrix.target }}.zip"
+
+      - name: Package Windows desktop
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force dist | Out-Null
+          Copy-Item `
+            desktop/build/bin/bookbind-desktop.exe `
+            "dist/bookbind-desktop-${{ steps.version.outputs.version }}-${{ matrix.target }}.exe"
+          Compress-Archive `
+            -Path "dist/bookbind-desktop-${{ steps.version.outputs.version }}-${{ matrix.target }}.exe" `
+            -DestinationPath "dist/bookbind-desktop-${{ steps.version.outputs.version }}-${{ matrix.target }}.zip" `
+            -Force
+          Remove-Item "dist/bookbind-desktop-${{ steps.version.outputs.version }}-${{ matrix.target }}.exe"
 
       - name: Upload desktop artifact
         uses: actions/upload-artifact@v4
         with:
-          name: bookbind-desktop-${{ steps.version.outputs.version }}-linux-amd64
+          name: bookbind-desktop-${{ steps.version.outputs.version }}-${{ matrix.target }}
           path: dist/*
           if-no-files-found: error
 
