@@ -3,6 +3,7 @@ package audio
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 	"time"
 )
@@ -70,7 +71,7 @@ func TestChaptersParsesFFProbeChapters(t *testing.T) {
 
 func TestNewFFProbeResolvesFromPath(t *testing.T) {
 	dir := t.TempDir()
-	path := filepath.Join(dir, "ffprobe")
+	path := filepath.Join(dir, testExecutableName("ffprobe"))
 	if err := os.WriteFile(path, []byte("#!/bin/sh\n"), 0o755); err != nil {
 		t.Fatalf("write ffprobe: %v", err)
 	}
@@ -80,4 +81,11 @@ func TestNewFFProbeResolvesFromPath(t *testing.T) {
 	if prober.Path != path {
 		t.Fatalf("Path = %q, want %q", prober.Path, path)
 	}
+}
+
+func testExecutableName(name string) string {
+	if runtime.GOOS == "windows" {
+		return name + ".exe"
+	}
+	return name
 }

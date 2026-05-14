@@ -4,6 +4,7 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 	"time"
 
@@ -59,7 +60,7 @@ func TestBuildRunsFFmpeg(t *testing.T) {
 
 func TestNewBuilderResolvesFFmpegFromPath(t *testing.T) {
 	dir := t.TempDir()
-	path := filepath.Join(dir, "ffmpeg")
+	path := filepath.Join(dir, testExecutableName("ffmpeg"))
 	if err := os.WriteFile(path, []byte("#!/bin/sh\n"), 0o755); err != nil {
 		t.Fatalf("write ffmpeg: %v", err)
 	}
@@ -243,6 +244,13 @@ func testBuilder() *Builder {
 		FFmpegPath: "ffmpeg",
 		Runner:     ExecRunner{},
 	}
+}
+
+func testExecutableName(name string) string {
+	if runtime.GOOS == "windows" {
+		return name + ".exe"
+	}
+	return name
 }
 
 func assertCommand(t *testing.T, got, want []string) {
