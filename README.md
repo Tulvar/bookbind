@@ -163,8 +163,10 @@ wails build -platform windows/amd64 -ldflags "-s -w -X github.com/Tulvar/bookbin
 For Wails desktop releases, native builds are preferred: Linux on Linux, macOS
 on macOS, and Windows on Windows.
 
-`ffmpeg` and `ffprobe` must be available on `PATH` for real inspect/convert
-runs.
+`ffmpeg` and `ffprobe` are required for real inspect/convert runs. Bookbind
+checks `PATH` and common install locations such as `/opt/homebrew/bin` and
+`/usr/local/bin`, so macOS desktop builds can find Homebrew ffmpeg even when the
+app is opened from Finder.
 
 ## Milestones
 

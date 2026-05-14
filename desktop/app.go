@@ -30,11 +30,10 @@ type App struct {
 }
 
 func NewApp() *App {
+	builder := m4b.NewBuilder("ffmpeg")
+	builder.Runner = &desktopProgressRunner{}
 	return &App{
-		core: coreapp.New(coreapp.WithBuilder(&m4b.Builder{
-			FFmpegPath: "ffmpeg",
-			Runner:     &desktopProgressRunner{},
-		})),
+		core: coreapp.New(coreapp.WithBuilder(builder)),
 	}
 }
 

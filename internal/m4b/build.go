@@ -3,6 +3,7 @@ package m4b
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -13,6 +14,7 @@ import (
 
 	"github.com/Tulvar/bookbind/internal/audio"
 	"github.com/Tulvar/bookbind/internal/chapters"
+	"github.com/Tulvar/bookbind/internal/ffmpeg"
 	"github.com/Tulvar/bookbind/internal/metadata"
 )
 
@@ -37,6 +39,9 @@ func (ExecRunner) Run(ctx context.Context, name string, args ...string) error {
 		if output != "" {
 			return fmt.Errorf("%w: %s", err, output)
 		}
+		if errors.Is(err, exec.ErrNotFound) {
+			return fmt.Errorf("ffmpeg not found. Install ffmpeg, or put ffmpeg on PATH")
+		}
 		return err
 	}
 	return nil
@@ -60,6 +65,9 @@ func (r ReportingRunner) Run(ctx context.Context, name string, args ...string) e
 		if output != "" {
 			return fmt.Errorf("%w: %s", err, output)
 		}
+		if errors.Is(err, exec.ErrNotFound) {
+			return fmt.Errorf("ffmpeg not found. Install ffmpeg, or put ffmpeg on PATH")
+		}
 		return err
 	}
 	return nil
@@ -74,6 +82,7 @@ func NewBuilder(ffmpegPath string) *Builder {
 	if ffmpegPath == "" {
 		ffmpegPath = "ffmpeg"
 	}
+	ffmpegPath = ffmpeg.ResolveBinary(ffmpegPath)
 	return &Builder{
 		FFmpegPath: ffmpegPath,
 		Runner:     ExecRunner{},
