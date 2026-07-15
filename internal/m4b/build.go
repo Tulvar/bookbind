@@ -129,11 +129,25 @@ func (b *Builder) Build(ctx context.Context, req BuildRequest) (BuildResult, err
 	if b.Runner == nil {
 		return BuildResult{}, fmt.Errorf("ffmpeg runner is not configured")
 	}
+	temporaryOutput, err := createTemporaryOutput(req.OutputPath)
+	if err != nil {
+		return BuildResult{}, err
+	}
+	defer func() {
+		_ = os.Remove(temporaryOutput)
+	}()
+
+	executionCommand := append([]string(nil), command...)
+	executionCommand[1] = "-y"
+	executionCommand[len(executionCommand)-1] = temporaryOutput
 	if runner, ok := b.Runner.(ProgressRunner); ok {
 		runner.SetProgressWriter(req.ProgressWriter)
 	}
-	if err := b.Runner.Run(ctx, command[0], command[1:]...); err != nil {
+	if err := b.Runner.Run(ctx, executionCommand[0], executionCommand[1:]...); err != nil {
 		return BuildResult{}, fmt.Errorf("ffmpeg conversion failed: %w", err)
+	}
+	if err := publishTemporaryOutput(temporaryOutput, req.OutputPath, req.Overwrite); err != nil {
+		return BuildResult{}, err
 	}
 	return result, nil
 }
