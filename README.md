@@ -114,6 +114,12 @@ Metadata is filled in priority order: embedded MP3 tags first, then selected or
 saved provider metadata, and finally filename inference and manual completion of
 fields that are still empty.
 
+For embedded credits, an ordinary `album_artist` remains the preferred author.
+If `artist` or `album_artist` explicitly starts with a narrator marker such as
+`Читает`, `Чтец`, `Narrated by`, or `Read by`, that value is stored as narrator
+without the marker and is excluded from author selection. `composer` remains the
+narrator fallback for compatibility with existing audiobook tags.
+
 Attach a local cover:
 
 ```bash

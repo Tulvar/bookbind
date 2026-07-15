@@ -467,6 +467,7 @@ type Candidate struct {
 ```text
 title
 artist
+album_artist
 album
 composer
 genre
@@ -474,6 +475,12 @@ date
 comment
 cover
 ```
+
+Обычный `album_artist` имеет приоритет как автор, затем используется `artist`.
+Значения `artist`/`album_artist` с явным префиксом диктора (`Читает`, `Чтец`,
+`Диктор`, `Narrated by`, `Narrator`, `Read by`) исключаются из авторов, префикс
+удаляется, а оставшееся имя записывается как narrator. Если явного префикса нет,
+для обратной совместимости narrator берётся из `composer`.
 
 ---
 
