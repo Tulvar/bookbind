@@ -69,6 +69,10 @@ go run ./cmd/bookbind convert ./book.mp3 --interactive --select 1 --output ./boo
 When converting a directory, MP3 files are sorted by filename and written as M4B
 chapters using their filenames as chapter titles.
 
+Conversion is written to a temporary M4B file next to the requested output and
+published only after FFmpeg finishes successfully. A failed or cancelled run
+keeps an existing output unchanged and removes the temporary file.
+
 Preview conversion without writing output:
 
 ```bash

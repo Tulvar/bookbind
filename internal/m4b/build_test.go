@@ -2,6 +2,7 @@ package m4b
 
 import (
 	"context"
+	"errors"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -38,12 +39,13 @@ func TestBuildRunsFFmpeg(t *testing.T) {
 	runner := &fakeRunner{}
 	builder := testBuilder()
 	builder.Runner = runner
+	outputPath := filepath.Join(t.TempDir(), "book.m4b")
 
-	_, err := builder.Build(context.Background(), BuildRequest{
+	result, err := builder.Build(context.Background(), BuildRequest{
 		Input: audio.Input{
 			Files: []audio.File{{Path: "book.mp3"}},
 		},
-		OutputPath: "book.m4b",
+		OutputPath: outputPath,
 		Overwrite:  true,
 	})
 	if err != nil {
@@ -54,9 +56,107 @@ func TestBuildRunsFFmpeg(t *testing.T) {
 	if !containsInOrder(command, "ffmpeg", "-y", "-i", "book.mp3", "-i") {
 		t.Fatalf("command does not contain expected inputs: %#v", command)
 	}
-	if !containsInOrder(command, "-c:a", "aac", "-b:a", "64k", "book.m4b") {
+	if !containsInOrder(command, "-c:a", "aac", "-b:a", "64k") {
 		t.Fatalf("command does not contain conversion args: %#v", command)
 	}
+	if got := command[len(command)-1]; got == outputPath || filepath.Ext(got) != ".m4b" {
+		t.Fatalf("ffmpeg output = %q, want temporary .m4b path", got)
+	}
+	if got := result.Command[len(result.Command)-1]; got != outputPath {
+		t.Fatalf("reported output = %q, want %q", got, outputPath)
+	}
+	if data, readErr := os.ReadFile(outputPath); readErr != nil || string(data) != "complete" {
+		t.Fatalf("published output = %q, error = %v", data, readErr)
+	}
+}
+
+func TestBuildFailurePreservesExistingOutput(t *testing.T) {
+	dir := t.TempDir()
+	outputPath := filepath.Join(dir, "book.m4b")
+	if err := os.WriteFile(outputPath, []byte("original"), 0o644); err != nil {
+		t.Fatalf("write original output: %v", err)
+	}
+
+	builder := testBuilder()
+	builder.Runner = runnerFunc(func(_ context.Context, _ string, args ...string) error {
+		if err := os.WriteFile(args[len(args)-1], []byte("partial"), 0o644); err != nil {
+			return err
+		}
+		return errors.New("conversion failed")
+	})
+
+	_, err := builder.Build(context.Background(), BuildRequest{
+		Input:      audio.Input{Files: []audio.File{{Path: "book.mp3"}}},
+		OutputPath: outputPath,
+		Overwrite:  true,
+	})
+	if err == nil {
+		t.Fatal("Build() error = nil, want error")
+	}
+	assertFileContents(t, outputPath, "original")
+	assertNoTemporaryOutputs(t, dir)
+}
+
+func TestBuildPublishesOnlyAfterSuccessfulConversion(t *testing.T) {
+	dir := t.TempDir()
+	outputPath := filepath.Join(dir, "book.m4b")
+	if err := os.WriteFile(outputPath, []byte("original"), 0o600); err != nil {
+		t.Fatalf("write original output: %v", err)
+	}
+
+	var observedDuringConversion string
+	builder := testBuilder()
+	builder.Runner = runnerFunc(func(_ context.Context, _ string, args ...string) error {
+		data, err := os.ReadFile(outputPath)
+		if err != nil {
+			return err
+		}
+		observedDuringConversion = string(data)
+		return os.WriteFile(args[len(args)-1], []byte("complete"), 0o644)
+	})
+
+	_, err := builder.Build(context.Background(), BuildRequest{
+		Input:      audio.Input{Files: []audio.File{{Path: "book.mp3"}}},
+		OutputPath: outputPath,
+		Overwrite:  true,
+	})
+	if err != nil {
+		t.Fatalf("Build() error = %v", err)
+	}
+	if observedDuringConversion != "original" {
+		t.Fatalf("output during conversion = %q, want original", observedDuringConversion)
+	}
+	assertFileContents(t, outputPath, "complete")
+	info, err := os.Stat(outputPath)
+	if err != nil {
+		t.Fatalf("stat output: %v", err)
+	}
+	if got, want := info.Mode().Perm(), os.FileMode(0o600); got != want {
+		t.Fatalf("output permissions = %o, want %o", got, want)
+	}
+	assertNoTemporaryOutputs(t, dir)
+}
+
+func TestBuildDoesNotReplaceOutputCreatedDuringConversion(t *testing.T) {
+	dir := t.TempDir()
+	outputPath := filepath.Join(dir, "book.m4b")
+	builder := testBuilder()
+	builder.Runner = runnerFunc(func(_ context.Context, _ string, args ...string) error {
+		if err := os.WriteFile(outputPath, []byte("concurrent"), 0o644); err != nil {
+			return err
+		}
+		return os.WriteFile(args[len(args)-1], []byte("complete"), 0o644)
+	})
+
+	_, err := builder.Build(context.Background(), BuildRequest{
+		Input:      audio.Input{Files: []audio.File{{Path: "book.mp3"}}},
+		OutputPath: outputPath,
+	})
+	if err == nil {
+		t.Fatal("Build() error = nil, want publish conflict")
+	}
+	assertFileContents(t, outputPath, "concurrent")
+	assertNoTemporaryOutputs(t, dir)
 }
 
 func TestNewBuilderResolvesFFmpegFromPath(t *testing.T) {
@@ -310,5 +410,33 @@ type fakeRunner struct {
 func (r *fakeRunner) Run(_ context.Context, name string, args ...string) error {
 	r.name = name
 	r.args = args
-	return nil
+	return os.WriteFile(args[len(args)-1], []byte("complete"), 0o644)
+}
+
+type runnerFunc func(context.Context, string, ...string) error
+
+func (run runnerFunc) Run(ctx context.Context, name string, args ...string) error {
+	return run(ctx, name, args...)
+}
+
+func assertFileContents(t *testing.T, path, want string) {
+	t.Helper()
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("read %s: %v", path, err)
+	}
+	if got := string(data); got != want {
+		t.Fatalf("contents of %s = %q, want %q", path, got, want)
+	}
+}
+
+func assertNoTemporaryOutputs(t *testing.T, dir string) {
+	t.Helper()
+	matches, err := filepath.Glob(filepath.Join(dir, ".*.bookbind-*.m4b"))
+	if err != nil {
+		t.Fatalf("glob temporary outputs: %v", err)
+	}
+	if len(matches) != 0 {
+		t.Fatalf("temporary outputs remain: %#v", matches)
+	}
 }
