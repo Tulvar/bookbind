@@ -39,10 +39,16 @@ type Candidate struct {
 	Provider    string
 	ID          string
 	Title       string
+	Subtitle    string
 	Authors     []string
 	Narrators   []string
+	Translators []string
 	Series      string
 	SeriesIndex string
+	Language    string
+	Genre       string
+	Description string
+	Publisher   string
 	Year        int
 	Duration    time.Duration
 	CoverURL    string

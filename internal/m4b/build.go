@@ -176,6 +176,7 @@ func (b *Builder) command(req BuildRequest) ([]string, func(), error) {
 			"-c:a", "aac",
 			"-b:a", "64k",
 		)
+		args = appendAudioLanguage(args, req.Metadata.Language)
 		if len(bookChapters) > 0 {
 			args = append(args, "-map_chapters", "1")
 		}
@@ -225,6 +226,7 @@ func (b *Builder) command(req BuildRequest) ([]string, func(), error) {
 		"-c:a", "aac",
 		"-b:a", "64k",
 	)
+	args = appendAudioLanguage(args, req.Metadata.Language)
 	args = appendCoverArgs(args, req.CoverPath)
 	args = append(args, req.OutputPath)
 	return append([]string{b.FFmpegPath}, args...), cleanup, nil
@@ -260,6 +262,49 @@ func appendCoverArgs(args []string, coverPath string) []string {
 		"-c:v", "copy",
 		"-disposition:v", "attached_pic",
 	)
+}
+
+func appendAudioLanguage(args []string, language string) []string {
+	code := mp4LanguageCode(language)
+	if code == "" {
+		return args
+	}
+	return append(args, "-metadata:s:a:0", "language="+code)
+}
+
+func mp4LanguageCode(value string) string {
+	value = strings.ToLower(strings.TrimSpace(value))
+	if separator := strings.IndexAny(value, "-_"); separator >= 0 {
+		value = value[:separator]
+	}
+	if len(value) == 3 {
+		return value
+	}
+	return map[string]string{
+		"ar": "ara",
+		"cs": "ces",
+		"da": "dan",
+		"de": "deu",
+		"el": "ell",
+		"en": "eng",
+		"es": "spa",
+		"fi": "fin",
+		"fr": "fra",
+		"he": "heb",
+		"it": "ita",
+		"ja": "jpn",
+		"ko": "kor",
+		"nl": "nld",
+		"no": "nor",
+		"pl": "pol",
+		"pt": "por",
+		"ru": "rus",
+		"sk": "slk",
+		"sv": "swe",
+		"tr": "tur",
+		"uk": "ukr",
+		"zh": "zho",
+	}[value]
 }
 
 func writeConcatList(files []audio.File) (string, func(), error) {

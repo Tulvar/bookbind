@@ -122,8 +122,14 @@ func TestPreviewMetadataReturnsBookWithoutWritingYAML(t *testing.T) {
 
 func TestBookFromCandidateJoinsMultipleAuthors(t *testing.T) {
 	book := bookFromCandidate(providers.Candidate{
-		Title:   "Book",
-		Authors: []string{"One", "Two"},
+		Title:       "Book",
+		Subtitle:    "Subtitle",
+		Authors:     []string{"One", "Two"},
+		Translators: []string{"Translator"},
+		Language:    "en",
+		Genre:       "Fantasy",
+		Description: "Description",
+		Publisher:   "Publisher",
 	})
 
 	if book.Author != "One, Two" {
@@ -131,5 +137,14 @@ func TestBookFromCandidateJoinsMultipleAuthors(t *testing.T) {
 	}
 	if len(book.Authors) != 2 {
 		t.Fatalf("Authors len = %d", len(book.Authors))
+	}
+	if book.Subtitle != "Subtitle" || book.Translator != "Translator" {
+		t.Fatalf("Subtitle = %q, Translator = %q", book.Subtitle, book.Translator)
+	}
+	if book.Language != "en" || book.Genre != "Fantasy" || book.Publisher != "Publisher" {
+		t.Fatalf("Language = %q, Genre = %q, Publisher = %q", book.Language, book.Genre, book.Publisher)
+	}
+	if book.Description != "Description" {
+		t.Fatalf("Description = %q", book.Description)
 	}
 }

@@ -96,6 +96,10 @@ Use manual metadata:
 go run ./cmd/bookbind convert ./book.mp3 --metadata ./bookbind.yaml --output ./book.m4b
 ```
 
+Metadata is filled in priority order: embedded MP3 tags first, then selected or
+saved provider metadata, and finally filename inference and manual completion of
+fields that are still empty.
+
 Attach a local cover:
 
 ```bash
@@ -109,6 +113,7 @@ Example metadata:
 
 ```yaml
 title: "Ночной дозор"
+subtitle: ""
 author: "Сергей Лукьяненко"
 narrator: ""
 series: "Дозоры"
@@ -119,6 +124,11 @@ published_year: 1998
 description: |
   Описание книги.
 ```
+
+The M4B writer keeps the standard iTunes/MP4 tags used by Apple Books and common
+audiobook players. The language is stored on the audio track. Subtitle is also
+included in the displayed title, while narrator, translator, and publisher are
+copied to the long description when no portable dedicated audiobook tag exists.
 
 ## Development
 

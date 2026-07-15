@@ -78,6 +78,8 @@ func TestGet(t *testing.T) {
 			"work_id": 42,
 			"work_name": "Последний довод королей",
 			"work_year": 2008,
+			"work_description": "<p>Завершение трилогии.</p>",
+			"lang_code": "ru",
 			"image": "//fantlab.ru/images/work/42",
 			"authors": [{"name": "Джо Аберкромби"}]
 		}`))
@@ -94,6 +96,9 @@ func TestGet(t *testing.T) {
 	}
 	if got.CoverURL != "https://fantlab.ru/images/work/42" {
 		t.Fatalf("CoverURL = %q", got.CoverURL)
+	}
+	if got.Description != "Завершение трилогии." || got.Language != "ru" {
+		t.Fatalf("Description = %q, Language = %q", got.Description, got.Language)
 	}
 }
 
