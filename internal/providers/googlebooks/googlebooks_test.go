@@ -25,7 +25,11 @@ func TestSearch(t *testing.T) {
 						"title": "The Hobbit",
 						"subtitle": "There and Back Again",
 						"authors": ["J. R. R. Tolkien"],
+						"publisher": "Allen & Unwin",
 						"publishedDate": "1937-09-21",
+						"description": "A hobbit goes on an adventure.",
+						"categories": ["Fantasy", "Adventure"],
+						"language": "en",
 						"imageLinks": {
 							"thumbnail": "http://example.test/thumb.jpg",
 							"large": "https://example.test/large.jpg"
@@ -76,8 +80,11 @@ func TestSearch(t *testing.T) {
 	if candidate.ID != "volume-1" {
 		t.Fatalf("ID = %q", candidate.ID)
 	}
-	if candidate.Title != "The Hobbit: There and Back Again" {
+	if candidate.Title != "The Hobbit" {
 		t.Fatalf("Title = %q", candidate.Title)
+	}
+	if candidate.Subtitle != "There and Back Again" {
+		t.Fatalf("Subtitle = %q", candidate.Subtitle)
 	}
 	if candidate.Authors[0] != "J. R. R. Tolkien" {
 		t.Fatalf("Author = %q", candidate.Authors[0])
@@ -87,6 +94,12 @@ func TestSearch(t *testing.T) {
 	}
 	if candidate.CoverURL != "https://example.test/large.jpg" {
 		t.Fatalf("CoverURL = %q", candidate.CoverURL)
+	}
+	if candidate.Publisher != "Allen & Unwin" || candidate.Language != "en" {
+		t.Fatalf("Publisher = %q, Language = %q", candidate.Publisher, candidate.Language)
+	}
+	if candidate.Genre != "Fantasy; Adventure" || candidate.Description == "" {
+		t.Fatalf("Genre = %q, Description = %q", candidate.Genre, candidate.Description)
 	}
 }
 

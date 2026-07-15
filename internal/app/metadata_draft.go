@@ -22,7 +22,7 @@ type PrepareConversionResult struct {
 }
 
 func (a *App) PrepareConversion(ctx context.Context, req PrepareConversionRequest) (PrepareConversionResult, error) {
-	input, err := a.inspector.Inspect(ctx, req.InputPath)
+	input, err := a.inspectMP3Input(ctx, req.InputPath)
 	if err != nil {
 		return PrepareConversionResult{}, err
 	}
@@ -40,14 +40,15 @@ func (a *App) PrepareConversion(ctx context.Context, req PrepareConversionReques
 }
 
 func (a *App) prepareMetadata(input audio.Input, metadataPath string, inline metadata.Book) (metadata.Book, error) {
-	book := inferInputMetadata(input)
+	book := inferEmbeddedMetadata(input)
 
 	loaded, err := loadMetadata(metadataPath)
 	if err != nil {
 		return metadata.Book{}, err
 	}
-	book = overlayBook(book, loaded)
-	book = overlayBook(book, inline)
+	book = fillMissingBook(book, loaded)
+	book = fillMissingBook(book, inline)
+	book = fillMissingBook(book, filename.ParsePath(input.Path))
 
 	if book.Title == "" {
 		book.Title = defaultTitle(input.Path)
@@ -59,8 +60,8 @@ func (a *App) prepareMetadata(input audio.Input, metadataPath string, inline met
 	return book, nil
 }
 
-func inferInputMetadata(input audio.Input) metadata.Book {
-	book := filename.ParsePath(input.Path)
+func inferEmbeddedMetadata(input audio.Input) metadata.Book {
+	book := metadata.Book{}
 	if len(input.Files) == 0 {
 		return book
 	}
@@ -93,7 +94,7 @@ func mergeDirectoryTags(book metadata.Book, files []audio.File) metadata.Book {
 }
 
 func mergeCommonTags(book metadata.Book, tags audio.EmbeddedTags, albumIsTitle bool) metadata.Book {
-	author := firstNonEmpty(tags.AlbumArtist, tags.Artist)
+	author, narrator := embeddedCredits(tags)
 	if author != "" {
 		book.Author = author
 	}
@@ -104,8 +105,8 @@ func mergeCommonTags(book metadata.Book, tags audio.EmbeddedTags, albumIsTitle b
 			book.Series = tags.Album
 		}
 	}
-	if tags.Composer != "" {
-		book.Narrator = tags.Composer
+	if narrator != "" {
+		book.Narrator = narrator
 	}
 	if tags.Genre != "" {
 		book.Genre = tags.Genre
@@ -140,57 +141,48 @@ func commonTag(files []audio.File, value func(audio.EmbeddedTags) string) string
 	return common
 }
 
-func overlayBook(base, override metadata.Book) metadata.Book {
-	if override.Title != "" {
-		base.Title = override.Title
+func fillMissingBook(base, fallback metadata.Book) metadata.Book {
+	if base.Title == "" {
+		base.Title = fallback.Title
 	}
-	if override.Subtitle != "" {
-		base.Subtitle = override.Subtitle
+	if base.Subtitle == "" {
+		base.Subtitle = fallback.Subtitle
 	}
-	if len(override.Authors) > 0 {
-		base.Authors = override.Authors
-		base.Author = ""
-	} else if override.Author != "" {
-		base.Author = override.Author
-		base.Authors = nil
+	if len(base.NormalizedAuthors()) == 0 {
+		base.Authors = fallback.Authors
+		base.Author = fallback.Author
 	}
-	if len(override.Narrators) > 0 {
-		base.Narrators = override.Narrators
-		base.Narrator = ""
-	} else if override.Narrator != "" {
-		base.Narrator = override.Narrator
-		base.Narrators = nil
+	if len(base.NormalizedNarrators()) == 0 {
+		base.Narrators = fallback.Narrators
+		base.Narrator = fallback.Narrator
 	}
-	if len(override.Translators) > 0 {
-		base.Translators = override.Translators
-		base.Translator = ""
-	} else if override.Translator != "" {
-		base.Translator = override.Translator
-		base.Translators = nil
+	if len(base.NormalizedTranslators()) == 0 {
+		base.Translators = fallback.Translators
+		base.Translator = fallback.Translator
 	}
-	if override.Series != "" {
-		base.Series = override.Series
+	if base.Series == "" {
+		base.Series = fallback.Series
 	}
-	if override.SeriesIndex != "" {
-		base.SeriesIndex = override.SeriesIndex
+	if base.SeriesIndex == "" {
+		base.SeriesIndex = fallback.SeriesIndex
 	}
-	if override.Language != "" {
-		base.Language = override.Language
+	if base.Language == "" {
+		base.Language = fallback.Language
 	}
-	if override.Genre != "" {
-		base.Genre = override.Genre
+	if base.Genre == "" {
+		base.Genre = fallback.Genre
 	}
-	if override.Description != "" {
-		base.Description = override.Description
+	if base.Description == "" {
+		base.Description = fallback.Description
 	}
-	if override.Publisher != "" {
-		base.Publisher = override.Publisher
+	if base.Publisher == "" {
+		base.Publisher = fallback.Publisher
 	}
-	if override.PublishedYear > 0 {
-		base.PublishedYear = override.PublishedYear
+	if base.PublishedYear == 0 {
+		base.PublishedYear = fallback.PublishedYear
 	}
-	if override.Cover != "" {
-		base.Cover = override.Cover
+	if base.Cover == "" {
+		base.Cover = fallback.Cover
 	}
 	return base
 }

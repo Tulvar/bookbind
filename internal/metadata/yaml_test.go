@@ -97,6 +97,7 @@ func TestBookEmpty(t *testing.T) {
 func TestMarshalTemplateYAML(t *testing.T) {
 	data, err := MarshalTemplateYAML(Book{
 		Title:    "Night Watch",
+		Subtitle: "The Other Side",
 		Language: "ru",
 		Cover:    "cover.jpg",
 	})
@@ -107,6 +108,7 @@ func TestMarshalTemplateYAML(t *testing.T) {
 	got := string(data)
 	for _, want := range []string{
 		"title: Night Watch",
+		"subtitle: The Other Side",
 		"author: \"\"",
 		"translator: \"\"",
 		"published_year: \"\"",

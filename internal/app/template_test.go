@@ -4,6 +4,7 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/Tulvar/bookbind/internal/audio"
@@ -37,6 +38,21 @@ func TestTemplateMetadataWritesDefaultYAML(t *testing.T) {
 	}
 	if got, want := book.Language, "ru"; got != want {
 		t.Fatalf("Language = %q, want %q", got, want)
+	}
+}
+
+func TestTemplateMetadataRejectsM4BInput(t *testing.T) {
+	dir := t.TempDir()
+	inputPath := filepath.Join(dir, "book.m4b")
+	if err := os.WriteFile(inputPath, []byte("test"), 0o644); err != nil {
+		t.Fatalf("write test file: %v", err)
+	}
+
+	_, err := newTestApp().TemplateMetadata(context.Background(), TemplateRequest{
+		InputPath: inputPath,
+	})
+	if err == nil || !strings.Contains(err.Error(), "only mp3 files") {
+		t.Fatalf("TemplateMetadata() error = %v, want mp3-only error", err)
 	}
 }
 
@@ -108,6 +124,34 @@ func TestTemplateMetadataUsesEmbeddedTags(t *testing.T) {
 	}
 	if got, want := result.Book.PublishedYear, 1998; got != want {
 		t.Fatalf("PublishedYear = %d, want %d", got, want)
+	}
+}
+
+func TestTemplateMetadataSeparatesEmbeddedAuthorAndNarrator(t *testing.T) {
+	dir := t.TempDir()
+	inputPath := filepath.Join(dir, "book.mp3")
+	if err := os.WriteFile(inputPath, []byte("test"), 0o644); err != nil {
+		t.Fatalf("write input file: %v", err)
+	}
+
+	app := newTestAppWithProber(testProber{
+		tags: audio.EmbeddedTags{
+			Artist:      "Джо Аберкромби",
+			AlbumArtist: "Читает: Кирилл Головин",
+		},
+	})
+	result, err := app.TemplateMetadata(context.Background(), TemplateRequest{
+		InputPath: inputPath,
+	})
+	if err != nil {
+		t.Fatalf("TemplateMetadata() error = %v", err)
+	}
+
+	if got, want := result.Book.Author, "Джо Аберкромби"; got != want {
+		t.Fatalf("Author = %q, want %q", got, want)
+	}
+	if got, want := result.Book.Narrator, "Кирилл Головин"; got != want {
+		t.Fatalf("Narrator = %q, want %q", got, want)
 	}
 }
 

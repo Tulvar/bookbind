@@ -310,7 +310,8 @@ bookbind/
 ```text
 - найти входные MP3
 - отсортировать файлы
-- получить duration
+- получить точный duration MP3 по количеству пакетов; учитывать Xing/LAME
+  gapless duration
 - получить codec/bitrate/channels
 - прочитать embedded tags
 - подготовить concat list для ffmpeg
@@ -466,6 +467,7 @@ type Candidate struct {
 ```text
 title
 artist
+album_artist
 album
 composer
 genre
@@ -473,6 +475,12 @@ date
 comment
 cover
 ```
+
+Обычный `album_artist` имеет приоритет как автор, затем используется `artist`.
+Значения `artist`/`album_artist` с явным префиксом диктора (`Читает`, `Чтец`,
+`Диктор`, `Narrated by`, `Narrator`, `Read by`) исключаются из авторов, префикс
+удаляется, а оставшееся имя записывается как narrator. Если явного префикса нет,
+для обратной совместимости narrator берётся из `composer`.
 
 ---
 
@@ -673,9 +681,22 @@ Chapter 003 — 00:20:00
 1. подготовить input list
 2. подготовить cover
 3. подготовить ffmetadata с chapters
-4. вызвать ffmpeg
-5. проверить выходной m4b через ffprobe
+4. проверить совместимость потоков для concat demuxer; несовместимые MP3
+   декодировать отдельно и объединить через audio concat filter
+5. вызвать ffmpeg
+6. проверить выходной m4b через ffprobe
 ```
+
+Concat demuxer используется только когда у всех файлов один аудиопоток без
+дополнительных потоков и совпадают codec, sample rate, sample format, channels,
+channel layout и time base. Bitrate может отличаться. Если параметры неизвестны
+или различаются, каждый MP3 передаётся отдельным input, timestamp начинается с
+нуля через `asetpts`, а FFmpeg concat filter согласует аудиоформат перед AAC.
+
+Для MP3 без надёжного Xing/LAME duration границы глав считаются по числу
+пакетов: MPEG-1 Layer III содержит 1152 samples на пакет, MPEG-2/2.5 — 576.
+Если заявленная duration отличается от пакетной не более чем на два MP3-фрейма,
+сохраняется заявленное gapless-значение с учётом encoder delay и padding.
 
 Пример ffmpeg-логики:
 

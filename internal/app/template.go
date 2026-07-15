@@ -23,7 +23,7 @@ type TemplateResult struct {
 }
 
 func (a *App) TemplateMetadata(ctx context.Context, req TemplateRequest) (TemplateResult, error) {
-	input, err := a.inspector.Inspect(ctx, req.InputPath)
+	input, err := a.inspectMP3Input(ctx, req.InputPath)
 	if err != nil {
 		return TemplateResult{}, err
 	}

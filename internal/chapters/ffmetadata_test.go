@@ -43,27 +43,43 @@ func TestFFMetadataEscapesSpecialValues(t *testing.T) {
 func TestFFMetadataDocumentWritesBookTags(t *testing.T) {
 	got := FFMetadataDocument(metadata.Book{
 		Title:         "Night Watch",
+		Subtitle:      "The Other Side",
 		Author:        "Sergey Lukyanenko",
 		Narrator:      "Reader",
 		Translator:    "Translator",
 		Series:        "Watches",
 		SeriesIndex:   "1",
 		Genre:         "Fantasy",
+		Description:   "Description",
+		Publisher:     "Publisher",
 		PublishedYear: 1998,
 	}, nil)
 
 	for _, want := range []string{
-		"title=Night Watch",
+		"title=Night Watch: The Other Side",
+		"disc_subtitle=The Other Side",
 		"media_type=2",
 		"artist=Sergey Lukyanenko",
 		"composer=Reader",
-		"translator=Translator",
 		`album=Watches \#1`,
 		"genre=Fantasy",
+		`description=Description\nNarrator: Reader\nTranslator: Translator\nPublisher: Publisher`,
+		`synopsis=Description\nNarrator: Reader\nTranslator: Translator\nPublisher: Publisher`,
 		"date=1998",
 	} {
 		if !strings.Contains(got, want) {
 			t.Fatalf("metadata does not contain %q:\n%s", want, got)
 		}
+	}
+}
+
+func TestFFMetadataDocumentDoesNotDuplicateSubtitleInTitle(t *testing.T) {
+	got := FFMetadataDocument(metadata.Book{
+		Title:    "Night Watch: The Other Side",
+		Subtitle: "The Other Side",
+	}, nil)
+
+	if strings.Contains(got, "title=Night Watch: The Other Side: The Other Side") {
+		t.Fatalf("metadata duplicated subtitle:\n%s", got)
 	}
 }

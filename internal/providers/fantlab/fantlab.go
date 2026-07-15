@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"html"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -187,12 +188,14 @@ func (w workDetail) candidate(provider string) providers.Candidate {
 		}
 	}
 	return providers.Candidate{
-		Provider: provider,
-		ID:       strconv.Itoa(w.WorkID.Int()),
-		Title:    firstNonEmpty(w.Name, w.Original, titleWithoutAuthors(w.Title)),
-		Authors:  authors,
-		Year:     w.Year.Int(),
-		CoverURL: normalizeFantLabURL(w.Image),
+		Provider:    provider,
+		ID:          strconv.Itoa(w.WorkID.Int()),
+		Title:       firstNonEmpty(w.Name, w.Original, titleWithoutAuthors(w.Title)),
+		Authors:     authors,
+		Language:    w.Language,
+		Description: plainTextDescription(w.Description),
+		Year:        w.Year.Int(),
+		CoverURL:    normalizeFantLabURL(w.Image),
 	}
 }
 
@@ -245,6 +248,29 @@ func stripTags(value string) string {
 	value = strings.ReplaceAll(value, "<br/>", ",")
 	value = strings.ReplaceAll(value, "<br />", ",")
 	return value
+}
+
+func plainTextDescription(value string) string {
+	value = strings.ReplaceAll(value, "<br>", "\n")
+	value = strings.ReplaceAll(value, "<br/>", "\n")
+	value = strings.ReplaceAll(value, "<br />", "\n")
+	value = strings.ReplaceAll(value, "</p>", "\n")
+
+	var builder strings.Builder
+	inTag := false
+	for _, char := range value {
+		switch char {
+		case '<':
+			inTag = true
+		case '>':
+			inTag = false
+		default:
+			if !inTag {
+				builder.WriteRune(char)
+			}
+		}
+	}
+	return strings.TrimSpace(html.UnescapeString(builder.String()))
 }
 
 func editionCoverURL(editionID int) string {

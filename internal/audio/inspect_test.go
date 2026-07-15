@@ -73,6 +73,15 @@ func TestInspectFileAddsProbeData(t *testing.T) {
 	if got, want := file.Codec, "mp3"; got != want {
 		t.Fatalf("Codec = %q, want %q", got, want)
 	}
+	if got, want := file.SampleRate, 44100; got != want {
+		t.Fatalf("SampleRate = %d, want %d", got, want)
+	}
+	if got, want := file.TimeBase, "1/14112000"; got != want {
+		t.Fatalf("TimeBase = %q, want %q", got, want)
+	}
+	if got, want := file.AudioStreams, 1; got != want {
+		t.Fatalf("AudioStreams = %d, want %d", got, want)
+	}
 }
 
 func writeTestFile(t *testing.T, path string) {
@@ -86,10 +95,15 @@ type fakeProber struct{}
 
 func (fakeProber) Probe(context.Context, string) (ProbeResult, error) {
 	return ProbeResult{
-		Duration: 3 * time.Second,
-		Codec:    "mp3",
-		Bitrate:  128000,
-		Channels: 2,
+		Duration:      3 * time.Second,
+		Codec:         "mp3",
+		Bitrate:       128000,
+		SampleRate:    44100,
+		SampleFormat:  "fltp",
+		Channels:      2,
+		ChannelLayout: "stereo",
+		TimeBase:      "1/14112000",
+		AudioStreams:  1,
 		Tags: EmbeddedTags{
 			Title:  "Embedded Title",
 			Artist: "Embedded Artist",
