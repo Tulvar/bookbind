@@ -9,23 +9,35 @@ type Input struct {
 }
 
 type File struct {
-	Path     string
-	Name     string
-	Duration time.Duration
-	Codec    string
-	Bitrate  int
-	Channels int
-	Tags     EmbeddedTags
-	Chapters []Chapter
+	Path            string
+	Name            string
+	Duration        time.Duration
+	Codec           string
+	Bitrate         int
+	SampleRate      int
+	SampleFormat    string
+	Channels        int
+	ChannelLayout   string
+	TimeBase        string
+	AudioStreams    int
+	NonAudioStreams int
+	Tags            EmbeddedTags
+	Chapters        []Chapter
 }
 
 type ProbeResult struct {
-	Duration time.Duration
-	Codec    string
-	Bitrate  int
-	Channels int
-	Tags     EmbeddedTags
-	Chapters []Chapter
+	Duration        time.Duration
+	Codec           string
+	Bitrate         int
+	SampleRate      int
+	SampleFormat    string
+	Channels        int
+	ChannelLayout   string
+	TimeBase        string
+	AudioStreams    int
+	NonAudioStreams int
+	Tags            EmbeddedTags
+	Chapters        []Chapter
 }
 
 type EmbeddedTags struct {

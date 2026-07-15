@@ -285,14 +285,14 @@ func TestBuildSingleFileWithSyntheticChaptersRequiresDuration(t *testing.T) {
 	}
 }
 
-func TestBuildDirectoryUsesConcatDemuxer(t *testing.T) {
+func TestBuildDirectoryUsesConcatDemuxerForCompatibleStreams(t *testing.T) {
 	builder := testBuilder()
 
 	result, err := builder.Build(context.Background(), BuildRequest{
 		Input: audio.Input{
 			Files: []audio.File{
-				{Path: filepath.Join("dir", "01.mp3"), Name: "01.mp3", Duration: time.Second},
-				{Path: filepath.Join("dir", "02.mp3"), Name: "02.mp3", Duration: time.Second},
+				compatibleMP3(filepath.Join("dir", "01.mp3"), time.Second),
+				compatibleMP3(filepath.Join("dir", "02.mp3"), time.Second),
 			},
 		},
 		OutputPath: "book.m4b",
@@ -313,14 +313,173 @@ func TestBuildDirectoryUsesConcatDemuxer(t *testing.T) {
 	}
 }
 
+func TestBuildDirectoryUsesConcatFilterForIncompatibleStreams(t *testing.T) {
+	builder := testBuilder()
+	first := compatibleMP3(filepath.Join("dir", "01.mp3"), time.Second)
+	second := compatibleMP3(filepath.Join("dir", "02.mp3"), time.Second)
+	second.SampleRate = 48000
+
+	result, err := builder.Build(context.Background(), BuildRequest{
+		Input:      audio.Input{Files: []audio.File{first, second}},
+		OutputPath: "book.m4b",
+		DryRun:     true,
+	})
+	if err != nil {
+		t.Fatalf("Build() error = %v", err)
+	}
+
+	if containsInOrder(result.Command, "-f", "concat") {
+		t.Fatalf("command uses concat demuxer for incompatible streams: %#v", result.Command)
+	}
+	if !containsInOrder(result.Command,
+		"-i", first.Path,
+		"-i", second.Path,
+		"-i",
+		"-filter_complex",
+	) {
+		t.Fatalf("command does not open audio files separately: %#v", result.Command)
+	}
+	wantFilter := "[0:a:0]asetpts=PTS-STARTPTS[bookbind_a0];" +
+		"[1:a:0]asetpts=PTS-STARTPTS[bookbind_a1];" +
+		"[bookbind_a0][bookbind_a1]concat=n=2:v=0:a=1[bookbind_audio]"
+	if !containsInOrder(result.Command, "-filter_complex", wantFilter, "-map", "[bookbind_audio]") {
+		t.Fatalf("command does not normalize and concatenate audio: %#v", result.Command)
+	}
+	if !containsInOrder(result.Command, "-map_metadata", "2", "-map_chapters", "2") {
+		t.Fatalf("command does not map fallback metadata input: %#v", result.Command)
+	}
+}
+
+func TestBuildDirectoryConcatFilterMapsCoverAfterAudioAndMetadataInputs(t *testing.T) {
+	builder := testBuilder()
+	first := compatibleMP3(filepath.Join("dir", "01.mp3"), time.Second)
+	second := compatibleMP3(filepath.Join("dir", "02.mp3"), time.Second)
+	second.NonAudioStreams = 1
+
+	result, err := builder.Build(context.Background(), BuildRequest{
+		Input:      audio.Input{Files: []audio.File{first, second}},
+		CoverPath:  "cover.jpg",
+		OutputPath: "book.m4b",
+		DryRun:     true,
+	})
+	if err != nil {
+		t.Fatalf("Build() error = %v", err)
+	}
+
+	if !containsInOrder(result.Command,
+		"-i", first.Path,
+		"-i", second.Path,
+		"-i",
+		"-i", "cover.jpg",
+		"-map", "[bookbind_audio]",
+		"-map", "3:v:0",
+	) {
+		t.Fatalf("command maps fallback inputs incorrectly: %#v", result.Command)
+	}
+	if !containsInOrder(result.Command, "-map_metadata", "2", "-map_chapters", "2") {
+		t.Fatalf("command does not map fallback metadata input: %#v", result.Command)
+	}
+}
+
+func TestConcatDemuxerCompatibility(t *testing.T) {
+	compatible := func() []audio.File {
+		return []audio.File{
+			compatibleMP3("01.mp3", time.Second),
+			compatibleMP3("02.mp3", time.Second),
+		}
+	}
+
+	tests := []struct {
+		name   string
+		change func([]audio.File)
+		want   bool
+	}{
+		{name: "same stream parameters", want: true},
+		{
+			name: "different bitrate is compatible",
+			change: func(files []audio.File) {
+				files[1].Bitrate = 192000
+			},
+			want: true,
+		},
+		{
+			name: "different codec",
+			change: func(files []audio.File) {
+				files[1].Codec = "aac"
+			},
+		},
+		{
+			name: "different sample rate",
+			change: func(files []audio.File) {
+				files[1].SampleRate = 48000
+			},
+		},
+		{
+			name: "different sample format",
+			change: func(files []audio.File) {
+				files[1].SampleFormat = "s16p"
+			},
+		},
+		{
+			name: "different channels",
+			change: func(files []audio.File) {
+				files[1].Channels = 1
+				files[1].ChannelLayout = "mono"
+			},
+		},
+		{
+			name: "different channel layout",
+			change: func(files []audio.File) {
+				files[1].ChannelLayout = "2 channels"
+			},
+		},
+		{
+			name: "different time base",
+			change: func(files []audio.File) {
+				files[1].TimeBase = "1/48000"
+			},
+		},
+		{
+			name: "embedded cover stream",
+			change: func(files []audio.File) {
+				files[1].NonAudioStreams = 1
+			},
+		},
+		{
+			name: "multiple audio streams",
+			change: func(files []audio.File) {
+				files[1].AudioStreams = 2
+			},
+		},
+		{
+			name: "missing probe data",
+			change: func(files []audio.File) {
+				files[1].SampleFormat = ""
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			files := compatible()
+			if tt.change != nil {
+				tt.change(files)
+			}
+			if got := concatDemuxerCompatible(files); got != tt.want {
+				t.Fatalf("concatDemuxerCompatible() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
 func TestBuildDirectoryWithCoverMapsAttachedPicture(t *testing.T) {
 	builder := testBuilder()
 
 	result, err := builder.Build(context.Background(), BuildRequest{
 		Input: audio.Input{
 			Files: []audio.File{
-				{Path: filepath.Join("dir", "01.mp3"), Name: "01.mp3", Duration: time.Second},
-				{Path: filepath.Join("dir", "02.mp3"), Name: "02.mp3", Duration: time.Second},
+				compatibleMP3(filepath.Join("dir", "01.mp3"), time.Second),
+				compatibleMP3(filepath.Join("dir", "02.mp3"), time.Second),
 			},
 		},
 		CoverPath:  "cover.png",
@@ -331,7 +490,7 @@ func TestBuildDirectoryWithCoverMapsAttachedPicture(t *testing.T) {
 		t.Fatalf("Build() error = %v", err)
 	}
 
-	if !containsInOrder(result.Command, "-i", "cover.png", "-map", "2:v") {
+	if !containsInOrder(result.Command, "-i", "cover.png", "-map", "2:v:0") {
 		t.Fatalf("command does not map cover input: %#v", result.Command)
 	}
 	if !containsInOrder(result.Command, "-i", "cover.png", "-map", "0:a") {
@@ -364,6 +523,23 @@ func testBuilder() *Builder {
 	return &Builder{
 		FFmpegPath: "ffmpeg",
 		Runner:     ExecRunner{},
+	}
+}
+
+func compatibleMP3(path string, duration time.Duration) audio.File {
+	return audio.File{
+		Path:            path,
+		Name:            filepath.Base(path),
+		Duration:        duration,
+		Codec:           "mp3",
+		Bitrate:         128000,
+		SampleRate:      44100,
+		SampleFormat:    "fltp",
+		Channels:        2,
+		ChannelLayout:   "stereo",
+		TimeBase:        "1/14112000",
+		AudioStreams:    1,
+		NonAudioStreams: 0,
 	}
 }
 

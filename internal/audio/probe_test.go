@@ -30,6 +30,39 @@ func TestFirstAudioStream(t *testing.T) {
 	}
 }
 
+func TestProbeResultIncludesConcatCompatibilityData(t *testing.T) {
+	output := ffprobeOutput{
+		Streams: []ffprobeStream{
+			{
+				CodecType:     "audio",
+				CodecName:     "mp3",
+				Duration:      "3.5",
+				BitRate:       "128000",
+				SampleRate:    "44100",
+				SampleFormat:  "fltp",
+				Channels:      2,
+				ChannelLayout: "stereo",
+				TimeBase:      "1/14112000",
+			},
+			{CodecType: "video", CodecName: "mjpeg"},
+		},
+	}
+
+	got := output.probeResult()
+	if got.Codec != "mp3" || got.SampleRate != 44100 || got.SampleFormat != "fltp" {
+		t.Fatalf("audio format = %#v", got)
+	}
+	if got.Channels != 2 || got.ChannelLayout != "stereo" || got.TimeBase != "1/14112000" {
+		t.Fatalf("audio layout/time base = %#v", got)
+	}
+	if got.AudioStreams != 1 || got.NonAudioStreams != 1 {
+		t.Fatalf("stream counts = audio %d, non-audio %d", got.AudioStreams, got.NonAudioStreams)
+	}
+	if got.Duration != 3500*time.Millisecond || got.Bitrate != 128000 {
+		t.Fatalf("duration/bitrate = %v/%d", got.Duration, got.Bitrate)
+	}
+}
+
 func TestEmbeddedTagsNormalizesKeys(t *testing.T) {
 	got := embeddedTags(ffTags{
 		"TITLE":        " Night Watch ",

@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
@@ -199,44 +200,60 @@ func (b *Builder) command(req BuildRequest) ([]string, func(), error) {
 		return append([]string{b.FFmpegPath}, args...), cleanup, nil
 	}
 
-	listPath, cleanupConcat, err := writeConcatList(req.Input.Files)
-	if err != nil {
-		return nil, nil, err
-	}
-	cleanup := cleanupConcat
-
 	bookChapters, err := chapters.FromAudioFiles(req.Input.Files)
 	if err != nil {
-		cleanup()
 		return nil, nil, err
 	}
 	metadataPath, cleanupMetadata, err := writeFFMetadata(req.Metadata, bookChapters)
 	if err != nil {
-		cleanup()
 		return nil, nil, err
 	}
-	cleanup = joinCleanup(cleanup, cleanupMetadata)
+	cleanup := cleanupMetadata
 
-	args = append(args,
-		"-f", "concat",
-		"-safe", "0",
-		"-i", listPath,
-		"-i", metadataPath,
-	)
+	metadataInput := 1
+	audioMap := "0:a"
+	filterGraph := ""
+	if concatDemuxerCompatible(req.Input.Files) {
+		listPath, cleanupConcat, err := writeConcatList(req.Input.Files)
+		if err != nil {
+			cleanup()
+			return nil, nil, err
+		}
+		cleanup = joinCleanup(cleanup, cleanupConcat)
+		args = append(args,
+			"-f", "concat",
+			"-safe", "0",
+			"-i", listPath,
+			"-i", metadataPath,
+		)
+	} else {
+		for _, file := range req.Input.Files {
+			args = append(args, "-i", file.Path)
+		}
+		metadataInput = len(req.Input.Files)
+		audioMap = "[bookbind_audio]"
+		filterGraph = audioConcatFilter(len(req.Input.Files))
+		args = append(args, "-i", metadataPath)
+	}
+
+	coverInput := metadataInput + 1
 	if req.CoverPath != "" {
 		args = append(args,
 			"-i", req.CoverPath,
 		)
 	}
-	args = append(args,
-		"-map", "0:a",
-	)
-	if req.CoverPath != "" {
-		args = append(args, "-map", "2:v")
+	if filterGraph != "" {
+		args = append(args, "-filter_complex", filterGraph)
 	}
 	args = append(args,
-		"-map_metadata", "1",
-		"-map_chapters", "1",
+		"-map", audioMap,
+	)
+	if req.CoverPath != "" {
+		args = append(args, "-map", strconv.Itoa(coverInput)+":v:0")
+	}
+	args = append(args,
+		"-map_metadata", strconv.Itoa(metadataInput),
+		"-map_chapters", strconv.Itoa(metadataInput),
 		"-c:a", "aac",
 		"-b:a", "64k",
 	)
@@ -244,6 +261,70 @@ func (b *Builder) command(req BuildRequest) ([]string, func(), error) {
 	args = appendCoverArgs(args, req.CoverPath)
 	args = append(args, req.OutputPath)
 	return append([]string{b.FFmpegPath}, args...), cleanup, nil
+}
+
+type concatAudioSignature struct {
+	codec         string
+	sampleRate    int
+	sampleFormat  string
+	channels      int
+	channelLayout string
+	timeBase      string
+}
+
+func concatDemuxerCompatible(files []audio.File) bool {
+	if len(files) < 2 {
+		return true
+	}
+
+	want, ok := concatSignature(files[0])
+	if !ok {
+		return false
+	}
+	for _, file := range files[1:] {
+		got, ok := concatSignature(file)
+		if !ok || got != want {
+			return false
+		}
+	}
+	return true
+}
+
+func concatSignature(file audio.File) (concatAudioSignature, bool) {
+	if file.AudioStreams != 1 || file.NonAudioStreams != 0 ||
+		strings.TrimSpace(file.Codec) == "" || file.SampleRate <= 0 ||
+		strings.TrimSpace(file.SampleFormat) == "" || file.Channels <= 0 ||
+		strings.TrimSpace(file.ChannelLayout) == "" || strings.TrimSpace(file.TimeBase) == "" {
+		return concatAudioSignature{}, false
+	}
+
+	return concatAudioSignature{
+		codec:         strings.ToLower(strings.TrimSpace(file.Codec)),
+		sampleRate:    file.SampleRate,
+		sampleFormat:  strings.ToLower(strings.TrimSpace(file.SampleFormat)),
+		channels:      file.Channels,
+		channelLayout: strings.ToLower(strings.TrimSpace(file.ChannelLayout)),
+		timeBase:      strings.TrimSpace(file.TimeBase),
+	}, true
+}
+
+func audioConcatFilter(fileCount int) string {
+	var filter strings.Builder
+	for index := 0; index < fileCount; index++ {
+		filter.WriteString(fmt.Sprintf(
+			"[%d:a:0]asetpts=PTS-STARTPTS[bookbind_a%d];",
+			index,
+			index,
+		))
+	}
+	for index := 0; index < fileCount; index++ {
+		filter.WriteString(fmt.Sprintf("[bookbind_a%d]", index))
+	}
+	filter.WriteString(fmt.Sprintf(
+		"concat=n=%d:v=0:a=1[bookbind_audio]",
+		fileCount,
+	))
+	return filter.String()
 }
 
 func singleFileChapters(file audio.File, chapterEvery time.Duration) ([]chapters.Chapter, error) {
