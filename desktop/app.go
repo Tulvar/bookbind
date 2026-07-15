@@ -383,11 +383,11 @@ type ConvertProgressEvent struct {
 }
 
 func (a *App) ConvertAudio(inputPath, outputPath, metadataPath, coverPath, chapterEvery string, dryRun, overwrite bool) (ConvertView, error) {
-	return a.convertAudio(inputPath, outputPath, metadataPath, BookMetadataView{}, coverPath, chapterEvery, dryRun, overwrite)
+	return a.convertAudio(inputPath, outputPath, metadataPath, BookMetadataView{}, false, coverPath, chapterEvery, dryRun, overwrite)
 }
 
 func (a *App) ConvertAudioWithMetadata(inputPath, outputPath string, metadata BookMetadataView, coverPath, chapterEvery string, dryRun, overwrite bool) (ConvertView, error) {
-	return a.convertAudio(inputPath, outputPath, "", metadata, coverPath, chapterEvery, dryRun, overwrite)
+	return a.convertAudio(inputPath, outputPath, "", metadata, true, coverPath, chapterEvery, dryRun, overwrite)
 }
 
 func (a *App) CancelConvert() bool {
@@ -400,7 +400,7 @@ func (a *App) CancelConvert() bool {
 	return true
 }
 
-func (a *App) convertAudio(inputPath, outputPath, metadataPath string, inlineMetadata BookMetadataView, coverPath, chapterEvery string, dryRun, overwrite bool) (ConvertView, error) {
+func (a *App) convertAudio(inputPath, outputPath, metadataPath string, inlineMetadata BookMetadataView, metadataOverride bool, coverPath, chapterEvery string, dryRun, overwrite bool) (ConvertView, error) {
 	ctx := a.dialogContext()
 	var cancel context.CancelFunc
 	convertID := 0
@@ -440,15 +440,16 @@ func (a *App) convertAudio(inputPath, outputPath, metadataPath string, inlineMet
 		}
 	}
 	result, err := a.core.Convert(ctx, coreapp.ConvertRequest{
-		InputPath:    strings.TrimSpace(inputPath),
-		OutputPath:   strings.TrimSpace(outputPath),
-		MetadataPath: strings.TrimSpace(metadataPath),
-		Metadata:     bookFromView(inlineMetadata),
-		CoverPath:    strings.TrimSpace(coverPath),
-		ChapterEvery: strings.TrimSpace(chapterEvery),
-		DryRun:       dryRun,
-		Overwrite:    overwrite,
-		Progress:     progress,
+		InputPath:        strings.TrimSpace(inputPath),
+		OutputPath:       strings.TrimSpace(outputPath),
+		MetadataPath:     strings.TrimSpace(metadataPath),
+		Metadata:         bookFromView(inlineMetadata),
+		MetadataOverride: metadataOverride,
+		CoverPath:        strings.TrimSpace(coverPath),
+		ChapterEvery:     strings.TrimSpace(chapterEvery),
+		DryRun:           dryRun,
+		Overwrite:        overwrite,
+		Progress:         progress,
 	})
 	if err != nil {
 		return ConvertView{}, err

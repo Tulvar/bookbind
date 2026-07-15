@@ -112,7 +112,10 @@ go run ./cmd/bookbind convert ./book.mp3 --metadata ./bookbind.yaml --output ./b
 
 Metadata is filled in priority order: embedded MP3 tags first, then selected or
 saved provider metadata, and finally filename inference and manual completion of
-fields that are still empty.
+fields that are still empty. In the desktop app, non-empty values confirmed in
+the final review form are applied last and override collected values. This lets
+manual corrections replace an incorrect title, author, narrator, translator,
+series, language, genre, description, publisher, year, or cover in the M4B.
 
 For embedded credits, an ordinary `album_artist` remains the preferred author.
 If `artist` or `album_artist` explicitly starts with a narrator marker such as

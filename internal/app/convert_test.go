@@ -6,6 +6,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
 	"time"
@@ -155,6 +156,100 @@ func TestConvertUsesInlineMetadata(t *testing.T) {
 
 	if got, want := result.Metadata.Title, "Inline Book"; got != want {
 		t.Fatalf("Metadata.Title = %q, want %q", got, want)
+	}
+}
+
+func TestConvertFinalMetadataOverridesCollectedValues(t *testing.T) {
+	dir := t.TempDir()
+	inputPath := filepath.Join(dir, "book.mp3")
+	metadataPath := filepath.Join(dir, "bookbind.yaml")
+	coverPath := filepath.Join(dir, "manual-cover.jpg")
+	if err := os.WriteFile(inputPath, []byte("test"), 0o644); err != nil {
+		t.Fatalf("write input file: %v", err)
+	}
+	if err := os.WriteFile(coverPath, []byte("cover"), 0o644); err != nil {
+		t.Fatalf("write cover file: %v", err)
+	}
+	if err := os.WriteFile(metadataPath, []byte(`subtitle: "Provider Subtitle"
+translators:
+  - "Provider Translator"
+publisher: "Provider Publisher"
+`), 0o644); err != nil {
+		t.Fatalf("write metadata file: %v", err)
+	}
+
+	manual := metadata.Book{
+		Title:         "Восстание Персеполиса",
+		Subtitle:      "Исправленный подзаголовок",
+		Author:        "Джеймс С. А. Кори",
+		Narrator:      "Всеволод Кузнецов",
+		Translator:    "Галина Соловьева",
+		Series:        "Пространство",
+		SeriesIndex:   "7",
+		Language:      "ru",
+		Genre:         "Боевая фантастика",
+		Description:   "Исправленное описание",
+		Publisher:     "СОЮЗ",
+		PublishedYear: 2021,
+		Cover:         coverPath,
+	}
+	result, err := newTestAppWithProber(testProber{tags: audio.EmbeddedTags{
+		Title:       "Пролог. Кортасар",
+		Artist:      "Джеймс С. А. Кори",
+		AlbumArtist: "Всеволод Кузнецов",
+		Album:       "Восстание Персеполиса",
+		Composer:    "Переводчик: Галина Соловьева",
+		Genre:       "Embedded Genre",
+		Date:        "2020",
+		Comment:     "Embedded Description",
+		Language:    "en",
+	}}).Convert(context.Background(), ConvertRequest{
+		InputPath:        inputPath,
+		MetadataPath:     metadataPath,
+		Metadata:         manual,
+		MetadataOverride: true,
+		DryRun:           true,
+	})
+	if err != nil {
+		t.Fatalf("Convert() error = %v", err)
+	}
+
+	if !reflect.DeepEqual(result.Metadata, manual) {
+		t.Fatalf("Metadata = %#v, want manual values %#v", result.Metadata, manual)
+	}
+}
+
+func TestConvertInlineMetadataWithoutOverrideKeepsEmbeddedValues(t *testing.T) {
+	dir := t.TempDir()
+	inputPath := filepath.Join(dir, "book.mp3")
+	if err := os.WriteFile(inputPath, []byte("test"), 0o644); err != nil {
+		t.Fatalf("write input file: %v", err)
+	}
+
+	result, err := newTestAppWithProber(testProber{tags: audio.EmbeddedTags{
+		Title:  "Embedded Title",
+		Artist: "Embedded Author",
+	}}).Convert(context.Background(), ConvertRequest{
+		InputPath: inputPath,
+		Metadata: metadata.Book{
+			Title:  "Fallback Title",
+			Author: "Fallback Author",
+			Genre:  "Fallback Genre",
+		},
+		DryRun: true,
+	})
+	if err != nil {
+		t.Fatalf("Convert() error = %v", err)
+	}
+
+	if got, want := result.Metadata.Title, "Embedded Title"; got != want {
+		t.Fatalf("Metadata.Title = %q, want %q", got, want)
+	}
+	if got, want := result.Metadata.Author, "Embedded Author"; got != want {
+		t.Fatalf("Metadata.Author = %q, want %q", got, want)
+	}
+	if got, want := result.Metadata.Genre, "Fallback Genre"; got != want {
+		t.Fatalf("Metadata.Genre = %q, want %q", got, want)
 	}
 }
 
