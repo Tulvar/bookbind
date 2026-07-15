@@ -2,10 +2,33 @@ name: CI
 
 on:
   pull_request:
+    branches:
+      - main
 
 jobs:
+  scope:
+    name: Check release PR scope
+    runs-on: ubuntu-latest
+    outputs:
+      eligible: ${{ steps.release.outputs.eligible }}
+
+    steps:
+      - name: Check source branch
+        id: release
+        shell: bash
+        env:
+          HEAD_REF: ${{ github.head_ref }}
+        run: |
+          if [[ "$HEAD_REF" =~ ^release/v?[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "eligible=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "eligible=false" >> "$GITHUB_OUTPUT"
+          fi
+
   test:
     name: Go test (${{ matrix.os }})
+    needs: scope
+    if: needs.scope.outputs.eligible == 'true'
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -46,6 +69,8 @@ jobs:
 
   desktop:
     name: Desktop smoke
+    needs: scope
+    if: needs.scope.outputs.eligible == 'true'
     runs-on: ubuntu-22.04
 
     steps:
