@@ -69,6 +69,10 @@ go run ./cmd/bookbind convert ./book.mp3 --interactive --select 1 --output ./boo
 When converting a directory, MP3 files are sorted by filename and written as M4B
 chapters using their filenames as chapter titles.
 
+Chapter boundaries use counted MP3 packets instead of bitrate-estimated file
+durations. This prevents cumulative chapter drift in long CBR audiobooks while
+preserving shorter duration values supplied by Xing/LAME gapless metadata.
+
 Bookbind checks the probed audio stream parameters before using FFmpeg's concat
 demuxer. Files with different sample rates, channel layouts, time bases, extra
 streams such as embedded covers, or incomplete probe data are opened separately

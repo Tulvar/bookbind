@@ -31,14 +31,7 @@ func NewFFProbe(path string) *FFProbe {
 }
 
 func (p *FFProbe) Probe(ctx context.Context, path string) (ProbeResult, error) {
-	cmd := exec.CommandContext(ctx, p.Path,
-		"-v", "error",
-		"-print_format", "json",
-		"-show_chapters",
-		"-show_format",
-		"-show_streams",
-		path,
-	)
+	cmd := exec.CommandContext(ctx, p.Path, ffprobeArgs(path)...)
 
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout = &stdout
@@ -62,6 +55,18 @@ func (p *FFProbe) Probe(ctx context.Context, path string) (ProbeResult, error) {
 	return data.probeResult(), nil
 }
 
+func ffprobeArgs(path string) []string {
+	return []string{
+		"-v", "error",
+		"-print_format", "json",
+		"-count_packets",
+		"-show_chapters",
+		"-show_format",
+		"-show_streams",
+		path,
+	}
+}
+
 func isExecutableNotFound(err error) bool {
 	return errors.Is(err, exec.ErrNotFound)
 }
@@ -82,6 +87,7 @@ type ffprobeStream struct {
 	Channels      int    `json:"channels"`
 	ChannelLayout string `json:"channel_layout"`
 	TimeBase      string `json:"time_base"`
+	ReadPackets   string `json:"nb_read_packets"`
 }
 
 type ffprobeFormat struct {
@@ -113,6 +119,7 @@ func (o ffprobeOutput) probeResult() ProbeResult {
 	if duration == 0 {
 		duration = parseDuration(audioStream.Duration)
 	}
+	duration = accurateMP3Duration(duration, audioStream)
 
 	bitrate := parseInt(o.Format.BitRate)
 	if bitrate == 0 {
@@ -142,6 +149,64 @@ func (o ffprobeOutput) probeResult() ProbeResult {
 	}
 }
 
+func accurateMP3Duration(reported time.Duration, stream ffprobeStream) time.Duration {
+	if !strings.EqualFold(stream.CodecName, "mp3") {
+		return reported
+	}
+
+	sampleRate := parseInt(stream.SampleRate)
+	packetCount := parseInt64(stream.ReadPackets)
+	samplesPerPacket := mp3SamplesPerPacket(sampleRate)
+	if packetCount <= 0 || samplesPerPacket == 0 {
+		return reported
+	}
+	if packetCount > int64(^uint64(0)>>1)/samplesPerPacket {
+		return reported
+	}
+
+	counted := sampleDuration(packetCount*samplesPerPacket, sampleRate)
+	if reported <= 0 {
+		return counted
+	}
+
+	// Xing/LAME gapless metadata can trim encoder delay and padding from the
+	// packet duration. Keep that reported duration when the difference is no
+	// larger than two MP3 frames; larger differences indicate a bitrate-based
+	// estimate, which drifts at chapter boundaries.
+	frameDuration := sampleDuration(samplesPerPacket, sampleRate)
+	if absDuration(counted-reported) <= 2*frameDuration {
+		return reported
+	}
+	return counted
+}
+
+func mp3SamplesPerPacket(sampleRate int) int64 {
+	if sampleRate <= 0 {
+		return 0
+	}
+	if sampleRate <= 28000 {
+		return 576
+	}
+	return 1152
+}
+
+func sampleDuration(samples int64, sampleRate int) time.Duration {
+	if samples <= 0 || sampleRate <= 0 {
+		return 0
+	}
+	seconds := samples / int64(sampleRate)
+	remainder := samples % int64(sampleRate)
+	return time.Duration(seconds)*time.Second +
+		time.Duration(remainder)*time.Second/time.Duration(sampleRate)
+}
+
+func absDuration(value time.Duration) time.Duration {
+	if value < 0 {
+		return -value
+	}
+	return value
+}
+
 func parseDuration(value string) time.Duration {
 	if value == "" || value == "N/A" {
 		return 0
@@ -160,6 +225,18 @@ func parseInt(value string) int {
 	}
 
 	parsed, err := strconv.Atoi(value)
+	if err != nil {
+		return 0
+	}
+	return parsed
+}
+
+func parseInt64(value string) int64 {
+	if value == "" || value == "N/A" {
+		return 0
+	}
+
+	parsed, err := strconv.ParseInt(value, 10, 64)
 	if err != nil {
 		return 0
 	}
