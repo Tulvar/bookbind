@@ -103,6 +103,11 @@ func TestBuildPublishesOnlyAfterSuccessfulConversion(t *testing.T) {
 	if err := os.WriteFile(outputPath, []byte("original"), 0o600); err != nil {
 		t.Fatalf("write original output: %v", err)
 	}
+	originalInfo, statErr := os.Stat(outputPath)
+	if statErr != nil {
+		t.Fatalf("stat original output: %v", statErr)
+	}
+	originalMode := originalInfo.Mode().Perm()
 
 	var observedDuringConversion string
 	builder := testBuilder()
@@ -131,7 +136,7 @@ func TestBuildPublishesOnlyAfterSuccessfulConversion(t *testing.T) {
 	if err != nil {
 		t.Fatalf("stat output: %v", err)
 	}
-	if got, want := info.Mode().Perm(), os.FileMode(0o600); got != want {
+	if got, want := info.Mode().Perm(), originalMode; got != want {
 		t.Fatalf("output permissions = %o, want %o", got, want)
 	}
 	assertNoTemporaryOutputs(t, dir)
