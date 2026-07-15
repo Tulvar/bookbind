@@ -187,6 +187,61 @@ func fillMissingBook(base, fallback metadata.Book) metadata.Book {
 	return base
 }
 
+func overrideBook(base, override metadata.Book) metadata.Book {
+	if override.Title != "" {
+		base.Title = override.Title
+	}
+	if override.Subtitle != "" {
+		base.Subtitle = override.Subtitle
+	}
+	if len(override.Authors) > 0 {
+		base.Authors = append([]string(nil), override.Authors...)
+		base.Author = ""
+	} else if override.Author != "" {
+		base.Authors = nil
+		base.Author = override.Author
+	}
+	if len(override.Narrators) > 0 {
+		base.Narrators = append([]string(nil), override.Narrators...)
+		base.Narrator = ""
+	} else if override.Narrator != "" {
+		base.Narrators = nil
+		base.Narrator = override.Narrator
+	}
+	if len(override.Translators) > 0 {
+		base.Translators = append([]string(nil), override.Translators...)
+		base.Translator = ""
+	} else if override.Translator != "" {
+		base.Translators = nil
+		base.Translator = override.Translator
+	}
+	if override.Series != "" {
+		base.Series = override.Series
+	}
+	if override.SeriesIndex != "" {
+		base.SeriesIndex = override.SeriesIndex
+	}
+	if override.Language != "" {
+		base.Language = override.Language
+	}
+	if override.Genre != "" {
+		base.Genre = override.Genre
+	}
+	if override.Description != "" {
+		base.Description = override.Description
+	}
+	if override.Publisher != "" {
+		base.Publisher = override.Publisher
+	}
+	if override.PublishedYear > 0 {
+		base.PublishedYear = override.PublishedYear
+	}
+	if override.Cover != "" {
+		base.Cover = override.Cover
+	}
+	return base
+}
+
 func missingMetadataFields(book metadata.Book) []string {
 	var missing []string
 	if strings.TrimSpace(book.Title) == "" {
