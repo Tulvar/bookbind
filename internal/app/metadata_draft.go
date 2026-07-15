@@ -22,7 +22,7 @@ type PrepareConversionResult struct {
 }
 
 func (a *App) PrepareConversion(ctx context.Context, req PrepareConversionRequest) (PrepareConversionResult, error) {
-	input, err := a.inspector.Inspect(ctx, req.InputPath)
+	input, err := a.inspectMP3Input(ctx, req.InputPath)
 	if err != nil {
 		return PrepareConversionResult{}, err
 	}

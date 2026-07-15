@@ -6,6 +6,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -34,6 +35,39 @@ func TestConvertPlansDefaultOutput(t *testing.T) {
 	}
 	if !result.DryRun {
 		t.Fatal("DryRun = false, want true")
+	}
+}
+
+func TestConvertRejectsM4BInput(t *testing.T) {
+	dir := t.TempDir()
+	inputPath := filepath.Join(dir, "book.m4b")
+	if err := os.WriteFile(inputPath, []byte("test"), 0o644); err != nil {
+		t.Fatalf("write test file: %v", err)
+	}
+
+	_, err := newTestApp().Convert(context.Background(), ConvertRequest{
+		InputPath: inputPath,
+		DryRun:    true,
+	})
+	if err == nil || !strings.Contains(err.Error(), "only mp3 files") {
+		t.Fatalf("Convert() error = %v, want mp3-only error", err)
+	}
+}
+
+func TestConvertRejectsDirectoryContainingM4A(t *testing.T) {
+	dir := t.TempDir()
+	for _, name := range []string{"01.mp3", "02.m4a"} {
+		if err := os.WriteFile(filepath.Join(dir, name), []byte("test"), 0o644); err != nil {
+			t.Fatalf("write test file: %v", err)
+		}
+	}
+
+	_, err := newTestApp().Convert(context.Background(), ConvertRequest{
+		InputPath: dir,
+		DryRun:    true,
+	})
+	if err == nil || !strings.Contains(err.Error(), "only mp3 files") {
+		t.Fatalf("Convert() error = %v, want mp3-only error", err)
 	}
 }
 
@@ -152,6 +186,21 @@ func TestPrepareConversionUsesDirectoryEmbeddedBookTags(t *testing.T) {
 	}
 	if got, want := result.Metadata.PublishedYear, 2022; got != want {
 		t.Fatalf("PublishedYear = %d, want %d", got, want)
+	}
+}
+
+func TestPrepareConversionRejectsM4AInput(t *testing.T) {
+	dir := t.TempDir()
+	inputPath := filepath.Join(dir, "book.m4a")
+	if err := os.WriteFile(inputPath, []byte("test"), 0o644); err != nil {
+		t.Fatalf("write test file: %v", err)
+	}
+
+	_, err := newTestApp().PrepareConversion(context.Background(), PrepareConversionRequest{
+		InputPath: inputPath,
+	})
+	if err == nil || !strings.Contains(err.Error(), "only mp3 files") {
+		t.Fatalf("PrepareConversion() error = %v, want mp3-only error", err)
 	}
 }
 

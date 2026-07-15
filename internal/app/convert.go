@@ -41,7 +41,7 @@ type ConvertResult struct {
 }
 
 func (a *App) Convert(ctx context.Context, req ConvertRequest) (ConvertResult, error) {
-	input, err := a.inspector.Inspect(ctx, req.InputPath)
+	input, err := a.inspectMP3Input(ctx, req.InputPath)
 	if err != nil {
 		return ConvertResult{}, err
 	}

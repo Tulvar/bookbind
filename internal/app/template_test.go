@@ -4,6 +4,7 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/Tulvar/bookbind/internal/audio"
@@ -37,6 +38,21 @@ func TestTemplateMetadataWritesDefaultYAML(t *testing.T) {
 	}
 	if got, want := book.Language, "ru"; got != want {
 		t.Fatalf("Language = %q, want %q", got, want)
+	}
+}
+
+func TestTemplateMetadataRejectsM4BInput(t *testing.T) {
+	dir := t.TempDir()
+	inputPath := filepath.Join(dir, "book.m4b")
+	if err := os.WriteFile(inputPath, []byte("test"), 0o644); err != nil {
+		t.Fatalf("write test file: %v", err)
+	}
+
+	_, err := newTestApp().TemplateMetadata(context.Background(), TemplateRequest{
+		InputPath: inputPath,
+	})
+	if err == nil || !strings.Contains(err.Error(), "only mp3 files") {
+		t.Fatalf("TemplateMetadata() error = %v, want mp3-only error", err)
 	}
 }
 
