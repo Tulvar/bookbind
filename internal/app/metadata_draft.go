@@ -94,7 +94,7 @@ func mergeDirectoryTags(book metadata.Book, files []audio.File) metadata.Book {
 }
 
 func mergeCommonTags(book metadata.Book, tags audio.EmbeddedTags, albumIsTitle bool) metadata.Book {
-	author := firstNonEmpty(tags.AlbumArtist, tags.Artist)
+	author, narrator := embeddedCredits(tags)
 	if author != "" {
 		book.Author = author
 	}
@@ -105,8 +105,8 @@ func mergeCommonTags(book metadata.Book, tags audio.EmbeddedTags, albumIsTitle b
 			book.Series = tags.Album
 		}
 	}
-	if tags.Composer != "" {
-		book.Narrator = tags.Composer
+	if narrator != "" {
+		book.Narrator = narrator
 	}
 	if tags.Genre != "" {
 		book.Genre = tags.Genre

@@ -222,6 +222,33 @@ func TestPrepareConversionUsesDirectoryEmbeddedBookTags(t *testing.T) {
 	}
 }
 
+func TestPrepareConversionSeparatesEmbeddedAuthorAndNarrator(t *testing.T) {
+	dir := t.TempDir()
+	for _, name := range []string{"01.mp3", "02.mp3"} {
+		if err := os.WriteFile(filepath.Join(dir, name), []byte("test"), 0o644); err != nil {
+			t.Fatalf("write input file: %v", err)
+		}
+	}
+
+	result, err := newTestAppWithProber(testProber{
+		tags: audio.EmbeddedTags{
+			Album:       "Последний довод королей",
+			Artist:      "Джо Аберкромби",
+			AlbumArtist: "Читает Кирилл Головин",
+		},
+	}).PrepareConversion(context.Background(), PrepareConversionRequest{InputPath: dir})
+	if err != nil {
+		t.Fatalf("PrepareConversion() error = %v", err)
+	}
+
+	if got, want := result.Metadata.Author, "Джо Аберкромби"; got != want {
+		t.Fatalf("Author = %q, want %q", got, want)
+	}
+	if got, want := result.Metadata.Narrator, "Кирилл Головин"; got != want {
+		t.Fatalf("Narrator = %q, want %q", got, want)
+	}
+}
+
 func TestPrepareConversionRejectsM4AInput(t *testing.T) {
 	dir := t.TempDir()
 	inputPath := filepath.Join(dir, "book.m4a")

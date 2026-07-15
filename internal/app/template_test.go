@@ -127,6 +127,34 @@ func TestTemplateMetadataUsesEmbeddedTags(t *testing.T) {
 	}
 }
 
+func TestTemplateMetadataSeparatesEmbeddedAuthorAndNarrator(t *testing.T) {
+	dir := t.TempDir()
+	inputPath := filepath.Join(dir, "book.mp3")
+	if err := os.WriteFile(inputPath, []byte("test"), 0o644); err != nil {
+		t.Fatalf("write input file: %v", err)
+	}
+
+	app := newTestAppWithProber(testProber{
+		tags: audio.EmbeddedTags{
+			Artist:      "Джо Аберкромби",
+			AlbumArtist: "Читает: Кирилл Головин",
+		},
+	})
+	result, err := app.TemplateMetadata(context.Background(), TemplateRequest{
+		InputPath: inputPath,
+	})
+	if err != nil {
+		t.Fatalf("TemplateMetadata() error = %v", err)
+	}
+
+	if got, want := result.Book.Author, "Джо Аберкромби"; got != want {
+		t.Fatalf("Author = %q, want %q", got, want)
+	}
+	if got, want := result.Book.Narrator, "Кирилл Головин"; got != want {
+		t.Fatalf("Narrator = %q, want %q", got, want)
+	}
+}
+
 func TestTemplateMetadataDetectsLocalCover(t *testing.T) {
 	dir := t.TempDir()
 	inputPath := filepath.Join(dir, "book.mp3")
