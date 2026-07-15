@@ -178,6 +178,7 @@ const translations = {
         chapters: 'chapters',
         metadataSearch: 'Metadata search',
         title: 'Title',
+        subtitle: 'Subtitle',
         bookTitle: 'Book title',
         author: 'Author',
         optionalAuthor: 'Optional author',
@@ -198,7 +199,10 @@ const translations = {
         narrators: 'Narrators',
         translators: 'Translators',
         series: 'Series',
+        seriesIndex: 'Series number',
         genre: 'Genre',
+        description: 'Description',
+        publisher: 'Publisher',
         output: 'Output',
         overwriteExistingFile: 'Overwrite existing file',
         saving: 'Saving',
@@ -306,6 +310,7 @@ const translations = {
         chapters: 'глав',
         metadataSearch: 'Поиск метаданных',
         title: 'Название',
+        subtitle: 'Подзаголовок',
         bookTitle: 'Название книги',
         author: 'Автор',
         optionalAuthor: 'Автор, необязательно',
@@ -326,7 +331,10 @@ const translations = {
         narrators: 'Чтецы',
         translators: 'Переводчики',
         series: 'Серия',
+        seriesIndex: 'Номер в серии',
         genre: 'Жанр',
+        description: 'Описание',
+        publisher: 'Издатель',
         output: 'Выходной файл',
         overwriteExistingFile: 'Перезаписать существующий файл',
         saving: 'Сохраняем',
@@ -833,6 +841,13 @@ function App() {
                                 />
                             </label>
                             <label>
+                                {copy.subtitle}
+                                <input
+                                    onChange={(event) => updatePreparedMetadata({Subtitle: event.target.value})}
+                                    value={preparedMetadata.Subtitle}
+                                />
+                            </label>
+                            <label>
                                 {copy.authorsInput}
                                 <input
                                     onChange={(event) => updatePreparedMetadata({
@@ -863,6 +878,20 @@ function App() {
                                 />
                             </label>
                             <label>
+                                {copy.series}
+                                <input
+                                    onChange={(event) => updatePreparedMetadata({Series: event.target.value})}
+                                    value={preparedMetadata.Series}
+                                />
+                            </label>
+                            <label>
+                                {copy.seriesIndex}
+                                <input
+                                    onChange={(event) => updatePreparedMetadata({SeriesIndex: event.target.value})}
+                                    value={preparedMetadata.SeriesIndex}
+                                />
+                            </label>
+                            <label>
                                 {copy.language}
                                 <input
                                     onChange={(event) => updatePreparedMetadata({Language: event.target.value})}
@@ -877,10 +906,34 @@ function App() {
                                 />
                             </label>
                             <label>
+                                {copy.publisher}
+                                <input
+                                    onChange={(event) => updatePreparedMetadata({Publisher: event.target.value})}
+                                    value={preparedMetadata.Publisher}
+                                />
+                            </label>
+                            <label>
+                                {copy.year}
+                                <input
+                                    min="0"
+                                    onChange={(event) => updatePreparedMetadata({PublishedYear: Number.parseInt(event.target.value, 10) || 0})}
+                                    type="number"
+                                    value={preparedMetadata.PublishedYear || ''}
+                                />
+                            </label>
+                            <label>
                                 {copy.cover}
                                 <input
                                     onChange={(event) => updatePreparedMetadata({Cover: event.target.value})}
                                     value={preparedMetadata.Cover}
+                                />
+                            </label>
+                            <label className="metadata-description">
+                                {copy.description}
+                                <textarea
+                                    onChange={(event) => updatePreparedMetadata({Description: event.target.value})}
+                                    rows={5}
+                                    value={preparedMetadata.Description}
                                 />
                             </label>
                         </div>

@@ -22,11 +22,14 @@ type ConvertRequest struct {
 	OutputPath   string
 	MetadataPath string
 	Metadata     metadata.Book
-	CoverPath    string
-	ChapterEvery string
-	DryRun       bool
-	Overwrite    bool
-	Progress     io.Writer
+	// MetadataOverride marks Metadata as final values reviewed by the user.
+	// Non-empty override fields replace automatically collected metadata.
+	MetadataOverride bool
+	CoverPath        string
+	ChapterEvery     string
+	DryRun           bool
+	Overwrite        bool
+	Progress         io.Writer
 }
 
 type ConvertResult struct {
@@ -64,6 +67,9 @@ func (a *App) Convert(ctx context.Context, req ConvertRequest) (ConvertResult, e
 	book, err := a.prepareMetadata(input, req.MetadataPath, req.Metadata)
 	if err != nil {
 		return ConvertResult{}, err
+	}
+	if req.MetadataOverride {
+		book = overrideBook(book, req.Metadata)
 	}
 	coverPath, err := resolveCoverPath(ctx, req.CoverPath, req.MetadataPath, book)
 	if err != nil {
