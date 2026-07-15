@@ -54,6 +54,7 @@ func TestFFMetadataDocumentWritesBookTags(t *testing.T) {
 
 	for _, want := range []string{
 		"title=Night Watch",
+		"media_type=2",
 		"artist=Sergey Lukyanenko",
 		"composer=Reader",
 		"translator=Translator",

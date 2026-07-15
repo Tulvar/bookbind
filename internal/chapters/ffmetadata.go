@@ -28,6 +28,7 @@ func FFMetadataDocument(book metadata.Book, chapters []Chapter) string {
 }
 
 func writeBookMetadata(builder *strings.Builder, book metadata.Book) {
+	writeTag(builder, "media_type", "2")
 	writeTag(builder, "title", book.Title)
 	writeTag(builder, "artist", strings.Join(book.NormalizedAuthors(), "; "))
 	writeTag(builder, "album_artist", strings.Join(book.NormalizedAuthors(), "; "))
