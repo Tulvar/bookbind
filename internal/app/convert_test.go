@@ -158,6 +158,39 @@ func TestConvertUsesInlineMetadata(t *testing.T) {
 	}
 }
 
+func TestPrepareConversionKeepsEmbeddedMetadataAndFillsMissingFields(t *testing.T) {
+	dir := t.TempDir()
+	inputPath := filepath.Join(dir, "Filename Title.mp3")
+	if err := os.WriteFile(inputPath, []byte("test"), 0o644); err != nil {
+		t.Fatalf("write input file: %v", err)
+	}
+
+	result, err := newTestAppWithProber(testProber{
+		tags: audio.EmbeddedTags{
+			Title:  "Embedded Title",
+			Artist: "Embedded Author",
+		},
+	}).PrepareConversion(context.Background(), PrepareConversionRequest{
+		InputPath: inputPath,
+		Metadata: metadata.Book{
+			Title:     "Internet Title",
+			Author:    "Internet Author",
+			Genre:     "Fantasy",
+			Publisher: "Publisher",
+		},
+	})
+	if err != nil {
+		t.Fatalf("PrepareConversion() error = %v", err)
+	}
+
+	if result.Metadata.Title != "Embedded Title" || result.Metadata.Author != "Embedded Author" {
+		t.Fatalf("Title = %q, Author = %q", result.Metadata.Title, result.Metadata.Author)
+	}
+	if result.Metadata.Genre != "Fantasy" || result.Metadata.Publisher != "Publisher" {
+		t.Fatalf("Genre = %q, Publisher = %q", result.Metadata.Genre, result.Metadata.Publisher)
+	}
+}
+
 func TestPrepareConversionUsesDirectoryEmbeddedBookTags(t *testing.T) {
 	dir := t.TempDir()
 	for _, name := range []string{"01.mp3", "02.mp3"} {

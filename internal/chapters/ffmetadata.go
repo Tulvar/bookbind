@@ -29,20 +29,51 @@ func FFMetadataDocument(book metadata.Book, chapters []Chapter) string {
 
 func writeBookMetadata(builder *strings.Builder, book metadata.Book) {
 	writeTag(builder, "media_type", "2")
-	writeTag(builder, "title", book.Title)
+	writeTag(builder, "title", displayTitle(book))
+	writeTag(builder, "disc_subtitle", book.Subtitle)
 	writeTag(builder, "artist", strings.Join(book.NormalizedAuthors(), "; "))
 	writeTag(builder, "album_artist", strings.Join(book.NormalizedAuthors(), "; "))
 	writeTag(builder, "composer", strings.Join(book.NormalizedNarrators(), "; "))
-	writeTag(builder, "translator", strings.Join(book.NormalizedTranslators(), "; "))
 	writeTag(builder, "album", albumTitle(book))
 	writeTag(builder, "genre", book.Genre)
-	writeTag(builder, "description", book.Description)
-	writeTag(builder, "comment", book.Description)
-	writeTag(builder, "publisher", book.Publisher)
-	writeTag(builder, "language", book.Language)
+	description := compatibleDescription(book)
+	writeTag(builder, "description", description)
+	writeTag(builder, "synopsis", description)
+	writeTag(builder, "comment", description)
 	if book.PublishedYear > 0 {
 		writeTag(builder, "date", strconv.Itoa(book.PublishedYear))
 	}
+}
+
+func displayTitle(book metadata.Book) string {
+	title := strings.TrimSpace(book.Title)
+	subtitle := strings.TrimSpace(book.Subtitle)
+	if title == "" {
+		return subtitle
+	}
+	normalizedTitle := strings.ToLower(title)
+	normalizedSubtitle := strings.ToLower(subtitle)
+	if subtitle == "" || normalizedTitle == normalizedSubtitle || strings.HasSuffix(normalizedTitle, ": "+normalizedSubtitle) {
+		return title
+	}
+	return title + ": " + subtitle
+}
+
+func compatibleDescription(book metadata.Book) string {
+	parts := make([]string, 0, 4)
+	if description := strings.TrimSpace(book.Description); description != "" {
+		parts = append(parts, description)
+	}
+	if narrators := strings.Join(book.NormalizedNarrators(), "; "); narrators != "" {
+		parts = append(parts, "Narrator: "+narrators)
+	}
+	if translators := strings.Join(book.NormalizedTranslators(), "; "); translators != "" {
+		parts = append(parts, "Translator: "+translators)
+	}
+	if publisher := strings.TrimSpace(book.Publisher); publisher != "" {
+		parts = append(parts, "Publisher: "+publisher)
+	}
+	return strings.Join(parts, "\n")
 }
 
 func writeTag(builder *strings.Builder, key, value string) {

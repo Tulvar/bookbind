@@ -109,10 +109,16 @@ func (a *App) getMetadataCandidate(ctx context.Context, provider, id, googleBook
 func bookFromCandidate(candidate providers.Candidate) metadata.Book {
 	book := metadata.Book{
 		Title:         candidate.Title,
+		Subtitle:      candidate.Subtitle,
 		Authors:       candidate.Authors,
 		Narrators:     candidate.Narrators,
+		Translators:   candidate.Translators,
 		Series:        candidate.Series,
 		SeriesIndex:   candidate.SeriesIndex,
+		Language:      candidate.Language,
+		Genre:         candidate.Genre,
+		Description:   candidate.Description,
+		Publisher:     candidate.Publisher,
 		PublishedYear: candidate.Year,
 		Cover:         candidate.CoverURL,
 	}

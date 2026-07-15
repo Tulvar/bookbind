@@ -198,6 +198,7 @@ type volumeInfo struct {
 	PublishedDate string     `json:"publishedDate"`
 	Description   string     `json:"description"`
 	Categories    []string   `json:"categories"`
+	Language      string     `json:"language"`
 	ImageLinks    imageLinks `json:"imageLinks"`
 }
 
@@ -210,20 +211,18 @@ type imageLinks struct {
 
 func (item volumeItem) candidate(provider string) providers.Candidate {
 	return providers.Candidate{
-		Provider: provider,
-		ID:       item.ID,
-		Title:    fullTitle(item.VolumeInfo.Title, item.VolumeInfo.Subtitle),
-		Authors:  item.VolumeInfo.Authors,
-		Year:     publishedYear(item.VolumeInfo.PublishedDate),
-		CoverURL: bestImage(item.VolumeInfo.ImageLinks),
+		Provider:    provider,
+		ID:          item.ID,
+		Title:       item.VolumeInfo.Title,
+		Subtitle:    item.VolumeInfo.Subtitle,
+		Authors:     item.VolumeInfo.Authors,
+		Language:    item.VolumeInfo.Language,
+		Genre:       strings.Join(item.VolumeInfo.Categories, "; "),
+		Description: item.VolumeInfo.Description,
+		Publisher:   item.VolumeInfo.Publisher,
+		Year:        publishedYear(item.VolumeInfo.PublishedDate),
+		CoverURL:    bestImage(item.VolumeInfo.ImageLinks),
 	}
-}
-
-func fullTitle(title, subtitle string) string {
-	if strings.TrimSpace(subtitle) == "" {
-		return title
-	}
-	return title + ": " + subtitle
 }
 
 func publishedYear(value string) int {

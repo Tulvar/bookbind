@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/Tulvar/bookbind/internal/audio"
+	"github.com/Tulvar/bookbind/internal/metadata"
 )
 
 func TestBuildDryRunSingleFilePlansCommand(t *testing.T) {
@@ -118,6 +119,26 @@ func TestBuildSingleFileWithSyntheticChaptersMapsChapters(t *testing.T) {
 
 	if !containsInOrder(result.Command, "-map_metadata", "1", "-c:a", "aac", "-map_chapters", "1") {
 		t.Fatalf("command does not map synthetic chapters: %#v", result.Command)
+	}
+}
+
+func TestBuildWritesLanguageOnAudioTrack(t *testing.T) {
+	builder := testBuilder()
+
+	result, err := builder.Build(context.Background(), BuildRequest{
+		Input: audio.Input{
+			Files: []audio.File{{Path: "book.mp3"}},
+		},
+		Metadata:   metadata.Book{Language: "ru-RU"},
+		OutputPath: "book.m4b",
+		DryRun:     true,
+	})
+	if err != nil {
+		t.Fatalf("Build() error = %v", err)
+	}
+
+	if !containsInOrder(result.Command, "-metadata:s:a:0", "language=rus") {
+		t.Fatalf("command does not set audio language: %#v", result.Command)
 	}
 }
 
