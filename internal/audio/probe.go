@@ -59,25 +59,7 @@ func (p *FFProbe) Probe(ctx context.Context, path string) (ProbeResult, error) {
 		return ProbeResult{}, fmt.Errorf("parse ffprobe output for %s: %w", path, err)
 	}
 
-	audioStream := data.firstAudioStream()
-	duration := parseDuration(data.Format.Duration)
-	if duration == 0 {
-		duration = parseDuration(audioStream.Duration)
-	}
-
-	bitrate := parseInt(data.Format.BitRate)
-	if bitrate == 0 {
-		bitrate = parseInt(audioStream.BitRate)
-	}
-
-	return ProbeResult{
-		Duration: duration,
-		Codec:    audioStream.CodecName,
-		Bitrate:  bitrate,
-		Channels: audioStream.Channels,
-		Tags:     embeddedTags(data.Format.Tags),
-		Chapters: chapters(data.Chapters),
-	}, nil
+	return data.probeResult(), nil
 }
 
 func isExecutableNotFound(err error) bool {
@@ -91,11 +73,15 @@ type ffprobeOutput struct {
 }
 
 type ffprobeStream struct {
-	CodecType string `json:"codec_type"`
-	CodecName string `json:"codec_name"`
-	Duration  string `json:"duration"`
-	BitRate   string `json:"bit_rate"`
-	Channels  int    `json:"channels"`
+	CodecType     string `json:"codec_type"`
+	CodecName     string `json:"codec_name"`
+	Duration      string `json:"duration"`
+	BitRate       string `json:"bit_rate"`
+	SampleRate    string `json:"sample_rate"`
+	SampleFormat  string `json:"sample_fmt"`
+	Channels      int    `json:"channels"`
+	ChannelLayout string `json:"channel_layout"`
+	TimeBase      string `json:"time_base"`
 }
 
 type ffprobeFormat struct {
@@ -119,6 +105,41 @@ func (o ffprobeOutput) firstAudioStream() ffprobeStream {
 		}
 	}
 	return ffprobeStream{}
+}
+
+func (o ffprobeOutput) probeResult() ProbeResult {
+	audioStream := o.firstAudioStream()
+	duration := parseDuration(o.Format.Duration)
+	if duration == 0 {
+		duration = parseDuration(audioStream.Duration)
+	}
+
+	bitrate := parseInt(o.Format.BitRate)
+	if bitrate == 0 {
+		bitrate = parseInt(audioStream.BitRate)
+	}
+
+	audioStreams := 0
+	for _, stream := range o.Streams {
+		if stream.CodecType == "audio" {
+			audioStreams++
+		}
+	}
+
+	return ProbeResult{
+		Duration:        duration,
+		Codec:           audioStream.CodecName,
+		Bitrate:         bitrate,
+		SampleRate:      parseInt(audioStream.SampleRate),
+		SampleFormat:    audioStream.SampleFormat,
+		Channels:        audioStream.Channels,
+		ChannelLayout:   audioStream.ChannelLayout,
+		TimeBase:        audioStream.TimeBase,
+		AudioStreams:    audioStreams,
+		NonAudioStreams: len(o.Streams) - audioStreams,
+		Tags:            embeddedTags(o.Format.Tags),
+		Chapters:        chapters(o.Chapters),
+	}
 }
 
 func parseDuration(value string) time.Duration {

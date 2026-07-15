@@ -69,6 +69,12 @@ go run ./cmd/bookbind convert ./book.mp3 --interactive --select 1 --output ./boo
 When converting a directory, MP3 files are sorted by filename and written as M4B
 chapters using their filenames as chapter titles.
 
+Bookbind checks the probed audio stream parameters before using FFmpeg's concat
+demuxer. Files with different sample rates, channel layouts, time bases, extra
+streams such as embedded covers, or incomplete probe data are opened separately
+and joined with the audio concat filter, which normalizes their decoded audio
+before the final AAC encode.
+
 Conversion is written to a temporary M4B file next to the requested output and
 published only after FFmpeg finishes successfully. A failed or cancelled run
 keeps an existing output unchanged and removes the temporary file.

@@ -673,9 +673,17 @@ Chapter 003 — 00:20:00
 1. подготовить input list
 2. подготовить cover
 3. подготовить ffmetadata с chapters
-4. вызвать ffmpeg
-5. проверить выходной m4b через ffprobe
+4. проверить совместимость потоков для concat demuxer; несовместимые MP3
+   декодировать отдельно и объединить через audio concat filter
+5. вызвать ffmpeg
+6. проверить выходной m4b через ffprobe
 ```
+
+Concat demuxer используется только когда у всех файлов один аудиопоток без
+дополнительных потоков и совпадают codec, sample rate, sample format, channels,
+channel layout и time base. Bitrate может отличаться. Если параметры неизвестны
+или различаются, каждый MP3 передаётся отдельным input, timestamp начинается с
+нуля через `asetpts`, а FFmpeg concat filter согласует аудиоформат перед AAC.
 
 Пример ffmpeg-логики:
 
