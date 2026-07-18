@@ -103,20 +103,22 @@ func (i *Inspector) inspectFile(ctx context.Context, path string) ([]File, error
 	}
 
 	return []File{{
-		Path:            path,
-		Name:            filepath.Base(path),
-		Duration:        probe.Duration,
-		Codec:           probe.Codec,
-		Bitrate:         probe.Bitrate,
-		SampleRate:      probe.SampleRate,
-		SampleFormat:    probe.SampleFormat,
-		Channels:        probe.Channels,
-		ChannelLayout:   probe.ChannelLayout,
-		TimeBase:        probe.TimeBase,
-		AudioStreams:    probe.AudioStreams,
-		NonAudioStreams: probe.NonAudioStreams,
-		Tags:            probe.Tags,
-		Chapters:        probe.Chapters,
+		Path:                  path,
+		Name:                  filepath.Base(path),
+		Duration:              probe.Duration,
+		Codec:                 probe.Codec,
+		Bitrate:               probe.Bitrate,
+		SampleRate:            probe.SampleRate,
+		SampleFormat:          probe.SampleFormat,
+		Channels:              probe.Channels,
+		ChannelLayout:         probe.ChannelLayout,
+		TimeBase:              probe.TimeBase,
+		AudioStreams:          probe.AudioStreams,
+		NonAudioStreams:       probe.NonAudioStreams,
+		HasAttachedPicture:    probe.HasAttachedPicture,
+		AttachedPictureStream: probe.AttachedPictureStream,
+		Tags:                  probe.Tags,
+		Chapters:              probe.Chapters,
 	}}, nil
 }
 

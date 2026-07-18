@@ -681,11 +681,13 @@ Chapter 003 — 00:20:00
 
 ```text
 1. подготовить input list
-2. подготовить cover
+2. выбрать cover по приоритету: явный `--cover`, metadata/final review,
+   `cover.jpg|jpeg|png` рядом с input, затем embedded `attached_pic` из первого
+   подходящего MP3
 3. подготовить ffmetadata с chapters
 4. проверить совместимость потоков для concat demuxer; несовместимые MP3
    декодировать отдельно и объединить через audio concat filter
-5. вызвать ffmpeg
+5. вызвать ffmpeg с `-movflags +faststart`, чтобы `moov` оказался до `mdat`
 6. проверить выходной m4b через ffprobe
 ```
 
@@ -700,6 +702,10 @@ channel layout и time base. Bitrate может отличаться. Если �
 Если заявленная duration отличается от пакетной не более чем на два MP3-фрейма,
 сохраняется заявленное gapless-значение с учётом encoder delay и padding.
 
+В итоговых MP4-тегах название серии записывается в `album`, а `series_index` —
+отдельно в `track`/`trkn`. Номер серии не добавляется к строке `album`, чтобы
+Apple Books и обычные M4B-плееры могли сортировать книги по стандартному полю.
+
 Пример ffmpeg-логики:
 
 ```bash
@@ -707,16 +713,17 @@ ffmpeg \
   -f concat \
   -safe 0 \
   -i input.txt \
-  -i cover.jpg \
   -i metadata.txt \
+  -i cover.jpg \
   -map 0:a \
-  -map 1:v \
-  -map_metadata 2 \
-  -map_chapters 2 \
+  -map 2:v:0 \
+  -map_metadata 1 \
+  -map_chapters 1 \
   -c:a aac \
   -b:a 64k \
   -c:v copy \
   -disposition:v attached_pic \
+  -movflags +faststart \
   output.m4b
 ```
 
@@ -725,18 +732,24 @@ ffmpeg \
 ```bash
 ffmpeg \
   -i input.mp3 \
-  -i cover.jpg \
   -i metadata.txt \
+  -i cover.jpg \
   -map 0:a \
-  -map 1:v \
-  -map_metadata 2 \
-  -map_chapters 2 \
+  -map 2:v:0 \
+  -map_metadata 1 \
+  -map_chapters 1 \
   -c:a aac \
   -b:a 64k \
   -c:v copy \
   -disposition:v attached_pic \
+  -movflags +faststart \
   output.m4b
 ```
+
+Если cover уже встроен в MP3 и имеет FFprobe disposition `attached_pic`,
+дополнительный input не нужен: builder мапит соответствующий `N:v:M`. Обычный
+видеопоток без `attached_pic` обложкой не считается. В MP4/M4B такая картинка
+записывается как стандартный атом `covr`.
 
 ---
 

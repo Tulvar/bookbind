@@ -384,10 +384,9 @@ func TestConvertUsesCLICover(t *testing.T) {
 	}
 }
 
-func TestConvertResolvesRelativeMetadataCover(t *testing.T) {
+func TestConvertDetectsLocalCover(t *testing.T) {
 	dir := t.TempDir()
 	inputPath := filepath.Join(dir, "book.mp3")
-	metadataPath := filepath.Join(dir, "bookbind.yaml")
 	coverPath := filepath.Join(dir, "cover.jpg")
 	if err := os.WriteFile(inputPath, []byte("test"), 0o644); err != nil {
 		t.Fatalf("write input file: %v", err)
@@ -395,8 +394,62 @@ func TestConvertResolvesRelativeMetadataCover(t *testing.T) {
 	if err := os.WriteFile(coverPath, []byte("cover"), 0o644); err != nil {
 		t.Fatalf("write cover file: %v", err)
 	}
+
+	result, err := newTestApp().Convert(context.Background(), ConvertRequest{
+		InputPath: inputPath,
+		DryRun:    true,
+	})
+	if err != nil {
+		t.Fatalf("Convert() error = %v", err)
+	}
+
+	if got, want := result.CoverPath, coverPath; got != want {
+		t.Fatalf("CoverPath = %q, want %q", got, want)
+	}
+	if !containsAdjacentArguments(result.Command, "-i", coverPath) {
+		t.Fatalf("command does not include detected cover: %#v", result.Command)
+	}
+}
+
+func TestConvertUsesEmbeddedCoverWhenNoExternalCoverExists(t *testing.T) {
+	dir := t.TempDir()
+	inputPath := filepath.Join(dir, "book.mp3")
+	if err := os.WriteFile(inputPath, []byte("test"), 0o644); err != nil {
+		t.Fatalf("write input file: %v", err)
+	}
+
+	result, err := newTestAppWithProber(testProber{hasAttachedPicture: true}).Convert(context.Background(), ConvertRequest{
+		InputPath: inputPath,
+		DryRun:    true,
+	})
+	if err != nil {
+		t.Fatalf("Convert() error = %v", err)
+	}
+
+	if result.CoverPath != "" {
+		t.Fatalf("CoverPath = %q for embedded cover, want empty external path", result.CoverPath)
+	}
+	if !containsAdjacentArguments(result.Command, "-map", "0:v:0") {
+		t.Fatalf("command does not map embedded cover: %#v", result.Command)
+	}
+}
+
+func TestConvertResolvesRelativeMetadataCover(t *testing.T) {
+	dir := t.TempDir()
+	inputPath := filepath.Join(dir, "book.mp3")
+	metadataPath := filepath.Join(dir, "bookbind.yaml")
+	coverPath := filepath.Join(dir, "metadata-cover.png")
+	if err := os.WriteFile(inputPath, []byte("test"), 0o644); err != nil {
+		t.Fatalf("write input file: %v", err)
+	}
+	if err := os.WriteFile(coverPath, []byte("cover"), 0o644); err != nil {
+		t.Fatalf("write cover file: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "cover.jpg"), []byte("automatic cover"), 0o644); err != nil {
+		t.Fatalf("write automatic cover file: %v", err)
+	}
 	if err := os.WriteFile(metadataPath, []byte(`title: "Book"
-cover: "cover.jpg"
+cover: "metadata-cover.png"
 `), 0o644); err != nil {
 		t.Fatalf("write metadata file: %v", err)
 	}
@@ -530,17 +583,39 @@ func newTestAppWithProber(prober testProber) *App {
 }
 
 type testProber struct {
-	tags audio.EmbeddedTags
+	tags               audio.EmbeddedTags
+	hasAttachedPicture bool
 }
 
 func (p testProber) Probe(context.Context, string) (audio.ProbeResult, error) {
 	return audio.ProbeResult{
-		Duration: 3 * time.Second,
-		Codec:    "mp3",
-		Bitrate:  128000,
-		Channels: 2,
-		Tags:     p.tags,
+		Duration:           3 * time.Second,
+		Codec:              "mp3",
+		Bitrate:            128000,
+		Channels:           2,
+		NonAudioStreams:    boolInt(p.hasAttachedPicture),
+		HasAttachedPicture: p.hasAttachedPicture,
+		Tags:               p.tags,
 	}, nil
+}
+
+func boolInt(value bool) int {
+	if value {
+		return 1
+	}
+	return 0
+}
+
+func containsAdjacentArguments(command []string, want ...string) bool {
+	if len(want) == 0 {
+		return true
+	}
+	for start := 0; start+len(want) <= len(command); start++ {
+		if reflect.DeepEqual(command[start:start+len(want)], want) {
+			return true
+		}
+	}
+	return false
 }
 
 type testRunner struct{}

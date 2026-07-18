@@ -33,6 +33,9 @@ func TestBuildDryRunSingleFilePlansCommand(t *testing.T) {
 	if !containsInOrder(result.Command, "-map", "0:a", "-map_metadata", "1") {
 		t.Fatalf("command does not map metadata: %#v", result.Command)
 	}
+	if !containsInOrder(result.Command, "-movflags", "+faststart", "book.m4b") {
+		t.Fatalf("command does not enable faststart: %#v", result.Command)
+	}
 }
 
 func TestBuildRunsFFmpeg(t *testing.T) {
@@ -183,7 +186,7 @@ func TestBuildSingleFileWithCoverMapsAttachedPicture(t *testing.T) {
 
 	result, err := builder.Build(context.Background(), BuildRequest{
 		Input: audio.Input{
-			Files: []audio.File{{Path: "book.mp3"}},
+			Files: []audio.File{{Path: "book.mp3", HasAttachedPicture: true}},
 		},
 		CoverPath:  "cover.jpg",
 		OutputPath: "book.m4b",
@@ -204,6 +207,61 @@ func TestBuildSingleFileWithCoverMapsAttachedPicture(t *testing.T) {
 	}
 	if containsInOrder(result.Command, "-vn") {
 		t.Fatalf("command should not disable video when cover exists: %#v", result.Command)
+	}
+	if containsInOrder(result.Command, "-map", "0:v:0") {
+		t.Fatalf("command maps embedded cover instead of explicit cover: %#v", result.Command)
+	}
+}
+
+func TestBuildSingleFileMapsEmbeddedAttachedPicture(t *testing.T) {
+	builder := testBuilder()
+
+	result, err := builder.Build(context.Background(), BuildRequest{
+		Input: audio.Input{
+			Files: []audio.File{{
+				Path:                  "book.mp3",
+				NonAudioStreams:       2,
+				HasAttachedPicture:    true,
+				AttachedPictureStream: 1,
+			}},
+		},
+		OutputPath: "book.m4b",
+		DryRun:     true,
+	})
+	if err != nil {
+		t.Fatalf("Build() error = %v", err)
+	}
+
+	if !containsInOrder(result.Command, "-i", "book.mp3", "-map", "0:a", "-map", "0:v:1") {
+		t.Fatalf("command does not map embedded cover: %#v", result.Command)
+	}
+	if !containsInOrder(result.Command, "-c:v", "copy", "-disposition:v", "attached_pic") {
+		t.Fatalf("command does not attach embedded cover: %#v", result.Command)
+	}
+	if containsInOrder(result.Command, "-vn") {
+		t.Fatalf("command disables embedded cover: %#v", result.Command)
+	}
+}
+
+func TestBuildSingleFileDoesNotTreatGenericVideoAsCover(t *testing.T) {
+	builder := testBuilder()
+
+	result, err := builder.Build(context.Background(), BuildRequest{
+		Input: audio.Input{
+			Files: []audio.File{{Path: "book.mp3", NonAudioStreams: 1}},
+		},
+		OutputPath: "book.m4b",
+		DryRun:     true,
+	})
+	if err != nil {
+		t.Fatalf("Build() error = %v", err)
+	}
+
+	if !containsInOrder(result.Command, "-vn") {
+		t.Fatalf("command does not ignore generic video stream: %#v", result.Command)
+	}
+	if containsInOrder(result.Command, "-map", "0:v:0") {
+		t.Fatalf("command maps generic video stream as cover: %#v", result.Command)
 	}
 }
 
@@ -316,6 +374,9 @@ func TestBuildDirectoryUsesConcatDemuxerForCompatibleStreams(t *testing.T) {
 	if !containsInOrder(result.Command, "-map_metadata", "1", "-map_chapters", "1") {
 		t.Fatalf("command does not map ffmetadata chapters: %#v", result.Command)
 	}
+	if !containsInOrder(result.Command, "-movflags", "+faststart", "book.m4b") {
+		t.Fatalf("command does not enable faststart: %#v", result.Command)
+	}
 }
 
 func TestBuildDirectoryUsesConcatFilterForIncompatibleStreams(t *testing.T) {
@@ -360,6 +421,7 @@ func TestBuildDirectoryConcatFilterMapsCoverAfterAudioAndMetadataInputs(t *testi
 	first := compatibleMP3(filepath.Join("dir", "01.mp3"), time.Second)
 	second := compatibleMP3(filepath.Join("dir", "02.mp3"), time.Second)
 	second.NonAudioStreams = 1
+	second.HasAttachedPicture = true
 
 	result, err := builder.Build(context.Background(), BuildRequest{
 		Input:      audio.Input{Files: []audio.File{first, second}},
@@ -383,6 +445,41 @@ func TestBuildDirectoryConcatFilterMapsCoverAfterAudioAndMetadataInputs(t *testi
 	}
 	if !containsInOrder(result.Command, "-map_metadata", "2", "-map_chapters", "2") {
 		t.Fatalf("command does not map fallback metadata input: %#v", result.Command)
+	}
+	if containsInOrder(result.Command, "-map", "1:v:0") {
+		t.Fatalf("command maps embedded cover instead of explicit cover: %#v", result.Command)
+	}
+}
+
+func TestBuildDirectoryMapsFirstEmbeddedAttachedPicture(t *testing.T) {
+	builder := testBuilder()
+	first := compatibleMP3(filepath.Join("dir", "01.mp3"), time.Second)
+	second := compatibleMP3(filepath.Join("dir", "02.mp3"), time.Second)
+	second.NonAudioStreams = 1
+	second.HasAttachedPicture = true
+
+	result, err := builder.Build(context.Background(), BuildRequest{
+		Input:      audio.Input{Files: []audio.File{first, second}},
+		OutputPath: "book.m4b",
+		DryRun:     true,
+	})
+	if err != nil {
+		t.Fatalf("Build() error = %v", err)
+	}
+
+	if containsInOrder(result.Command, "-f", "concat") {
+		t.Fatalf("command uses concat demuxer with embedded cover: %#v", result.Command)
+	}
+	if !containsInOrder(result.Command,
+		"-i", first.Path,
+		"-i", second.Path,
+		"-map", "[bookbind_audio]",
+		"-map", "1:v:0",
+	) {
+		t.Fatalf("command does not map embedded cover input: %#v", result.Command)
+	}
+	if !containsInOrder(result.Command, "-c:v", "copy", "-disposition:v", "attached_pic") {
+		t.Fatalf("command does not attach embedded cover: %#v", result.Command)
 	}
 }
 
