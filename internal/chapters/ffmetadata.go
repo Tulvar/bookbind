@@ -34,7 +34,8 @@ func writeBookMetadata(builder *strings.Builder, book metadata.Book) {
 	writeTag(builder, "artist", strings.Join(book.NormalizedAuthors(), "; "))
 	writeTag(builder, "album_artist", strings.Join(book.NormalizedAuthors(), "; "))
 	writeTag(builder, "composer", strings.Join(book.NormalizedNarrators(), "; "))
-	writeTag(builder, "album", albumTitle(book))
+	writeTag(builder, "album", book.Series)
+	writeTag(builder, "track", book.SeriesIndex)
 	writeTag(builder, "genre", book.Genre)
 	description := compatibleDescription(book)
 	writeTag(builder, "description", description)
@@ -82,16 +83,6 @@ func writeTag(builder *strings.Builder, key, value string) {
 		return
 	}
 	fmt.Fprintf(builder, "%s=%s\n", key, escapeValue(value))
-}
-
-func albumTitle(book metadata.Book) string {
-	if book.Series == "" {
-		return ""
-	}
-	if book.SeriesIndex == "" {
-		return book.Series
-	}
-	return book.Series + " #" + book.SeriesIndex
 }
 
 func millis(duration time.Duration) int64 {
