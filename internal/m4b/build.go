@@ -162,6 +162,8 @@ func (b *Builder) command(req BuildRequest) ([]string, func(), error) {
 	}
 
 	if len(req.Input.Files) == 1 {
+		embeddedCover := firstAttachedPicture(req.Input.Files)
+		hasCover := req.CoverPath != "" || embeddedCover.input >= 0
 		bookChapters, err := singleFileChapters(req.Input.Files[0], req.ChapterEvery)
 		if err != nil {
 			return nil, nil, err
@@ -185,6 +187,8 @@ func (b *Builder) command(req BuildRequest) ([]string, func(), error) {
 		)
 		if req.CoverPath != "" {
 			args = append(args, "-map", "2:v")
+		} else if embeddedCover.input >= 0 {
+			args = append(args, "-map", embeddedCover.mapSpecifier())
 		}
 		args = append(args,
 			"-map_metadata", "1",
@@ -195,7 +199,7 @@ func (b *Builder) command(req BuildRequest) ([]string, func(), error) {
 		if len(bookChapters) > 0 {
 			args = append(args, "-map_chapters", "1")
 		}
-		args = appendCoverArgs(args, req.CoverPath)
+		args = appendCoverArgs(args, hasCover)
 		args = append(args, "-movflags", "+faststart")
 		args = append(args, req.OutputPath)
 		return append([]string{b.FFmpegPath}, args...), cleanup, nil
@@ -237,11 +241,14 @@ func (b *Builder) command(req BuildRequest) ([]string, func(), error) {
 		args = append(args, "-i", metadataPath)
 	}
 
-	coverInput := metadataInput + 1
+	cover := attachedPicture{input: -1}
 	if req.CoverPath != "" {
+		cover.input = metadataInput + 1
 		args = append(args,
 			"-i", req.CoverPath,
 		)
+	} else {
+		cover = firstAttachedPicture(req.Input.Files)
 	}
 	if filterGraph != "" {
 		args = append(args, "-filter_complex", filterGraph)
@@ -249,8 +256,8 @@ func (b *Builder) command(req BuildRequest) ([]string, func(), error) {
 	args = append(args,
 		"-map", audioMap,
 	)
-	if req.CoverPath != "" {
-		args = append(args, "-map", strconv.Itoa(coverInput)+":v:0")
+	if cover.input >= 0 {
+		args = append(args, "-map", cover.mapSpecifier())
 	}
 	args = append(args,
 		"-map_metadata", strconv.Itoa(metadataInput),
@@ -259,7 +266,7 @@ func (b *Builder) command(req BuildRequest) ([]string, func(), error) {
 		"-b:a", "64k",
 	)
 	args = appendAudioLanguage(args, req.Metadata.Language)
-	args = appendCoverArgs(args, req.CoverPath)
+	args = appendCoverArgs(args, cover.input >= 0)
 	args = append(args, "-movflags", "+faststart")
 	args = append(args, req.OutputPath)
 	return append([]string{b.FFmpegPath}, args...), cleanup, nil
@@ -293,7 +300,7 @@ func concatDemuxerCompatible(files []audio.File) bool {
 }
 
 func concatSignature(file audio.File) (concatAudioSignature, bool) {
-	if file.AudioStreams != 1 || file.NonAudioStreams != 0 ||
+	if file.AudioStreams != 1 || file.NonAudioStreams != 0 || file.HasAttachedPicture ||
 		strings.TrimSpace(file.Codec) == "" || file.SampleRate <= 0 ||
 		strings.TrimSpace(file.SampleFormat) == "" || file.Channels <= 0 ||
 		strings.TrimSpace(file.ChannelLayout) == "" || strings.TrimSpace(file.TimeBase) == "" {
@@ -351,8 +358,26 @@ func embeddedChapters(values []audio.Chapter) []chapters.Chapter {
 	return result
 }
 
-func appendCoverArgs(args []string, coverPath string) []string {
-	if coverPath == "" {
+type attachedPicture struct {
+	input  int
+	stream int
+}
+
+func (picture attachedPicture) mapSpecifier() string {
+	return strconv.Itoa(picture.input) + ":v:" + strconv.Itoa(picture.stream)
+}
+
+func firstAttachedPicture(files []audio.File) attachedPicture {
+	for index, file := range files {
+		if file.HasAttachedPicture {
+			return attachedPicture{input: index, stream: file.AttachedPictureStream}
+		}
+	}
+	return attachedPicture{input: -1}
+}
+
+func appendCoverArgs(args []string, hasCover bool) []string {
+	if !hasCover {
 		return append(args, "-vn")
 	}
 	return append(args,

@@ -141,8 +141,33 @@ func TestProbeResultIncludesConcatCompatibilityData(t *testing.T) {
 	if got.AudioStreams != 1 || got.NonAudioStreams != 1 {
 		t.Fatalf("stream counts = audio %d, non-audio %d", got.AudioStreams, got.NonAudioStreams)
 	}
+	if got.HasAttachedPicture {
+		t.Fatal("HasAttachedPicture = true for video stream without attached_pic disposition")
+	}
 	if got.Duration != 3500*time.Millisecond || got.Bitrate != 128000 {
 		t.Fatalf("duration/bitrate = %v/%d", got.Duration, got.Bitrate)
+	}
+}
+
+func TestProbeResultDetectsAttachedPicture(t *testing.T) {
+	output := ffprobeOutput{
+		Streams: []ffprobeStream{
+			{CodecType: "audio", CodecName: "mp3"},
+			{CodecType: "video", CodecName: "png"},
+			{
+				CodecType:   "video",
+				CodecName:   "mjpeg",
+				Disposition: ffprobeDisposition{AttachedPic: 1},
+			},
+		},
+	}
+
+	got := output.probeResult()
+	if !got.HasAttachedPicture {
+		t.Fatal("HasAttachedPicture = false, want true")
+	}
+	if got.AttachedPictureStream != 1 {
+		t.Fatalf("AttachedPictureStream = %d, want 1", got.AttachedPictureStream)
 	}
 }
 
