@@ -64,8 +64,8 @@ func TestFFMetadataDocumentWritesBookTags(t *testing.T) {
 		"album=Watches",
 		"track=1",
 		"genre=Fantasy",
-		`description=Description\nNarrator: Reader\nTranslator: Translator\nPublisher: Publisher`,
-		`synopsis=Description\nNarrator: Reader\nTranslator: Translator\nPublisher: Publisher`,
+		"description=Description\\\nNarrator: Reader\\\nTranslator: Translator\\\nPublisher: Publisher",
+		"synopsis=Description\\\nNarrator: Reader\\\nTranslator: Translator\\\nPublisher: Publisher",
 		"date=1998",
 	} {
 		if !strings.Contains(got, want) {
