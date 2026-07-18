@@ -443,7 +443,7 @@ func runConvert(ctx context.Context, application *app.App, args []string, stdout
 	fs.SetOutput(io.Discard)
 
 	output := fs.String("output", "", "output m4b path")
-	metadata := fs.String("metadata", "", "metadata yaml path")
+	metadataPathFlag := fs.String("metadata", "", "metadata yaml path")
 	cover := fs.String("cover", "", "cover image path")
 	chapterEvery := fs.String("chapter-every", "", "create synthetic chapters at the given interval, for example 10m")
 	dryRun := fs.Bool("dry-run", false, "print planned work without creating output")
@@ -469,7 +469,16 @@ func runConvert(ctx context.Context, application *app.App, args []string, stdout
 		return fmt.Errorf("convert expects exactly one input path")
 	}
 	inputPath := fs.Arg(0)
-	metadataPath := *metadata
+	metadataPath := *metadataPathFlag
+	metadataOverride := !*interactive && strings.TrimSpace(metadataPath) != ""
+	manualMetadata := metadata.Book{}
+	if metadataOverride {
+		var err error
+		manualMetadata, err = metadata.LoadYAML(metadataPath)
+		if err != nil {
+			return err
+		}
+	}
 
 	if *interactive {
 		selectedMetadataPath, err := resolveInteractiveMetadata(ctx, application, interactiveMetadataRequest{
@@ -488,13 +497,15 @@ func runConvert(ctx context.Context, application *app.App, args []string, stdout
 	}
 
 	result, err := application.Convert(ctx, app.ConvertRequest{
-		InputPath:    inputPath,
-		OutputPath:   *output,
-		MetadataPath: metadataPath,
-		CoverPath:    *cover,
-		ChapterEvery: *chapterEvery,
-		DryRun:       *dryRun,
-		Overwrite:    *overwrite,
+		InputPath:        inputPath,
+		OutputPath:       *output,
+		MetadataPath:     metadataPath,
+		Metadata:         manualMetadata,
+		MetadataOverride: metadataOverride,
+		CoverPath:        *cover,
+		ChapterEvery:     *chapterEvery,
+		DryRun:           *dryRun,
+		Overwrite:        *overwrite,
 	})
 	if err != nil {
 		return err
