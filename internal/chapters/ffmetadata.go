@@ -91,8 +91,8 @@ func millis(duration time.Duration) int64 {
 
 func escapeValue(value string) string {
 	value = strings.ReplaceAll(value, "\\", "\\\\")
-	value = strings.ReplaceAll(value, "\n", "\\n")
 	value = strings.ReplaceAll(value, "\r", "")
+	value = strings.ReplaceAll(value, "\n", "\\\n")
 	value = strings.ReplaceAll(value, "=", "\\=")
 	value = strings.ReplaceAll(value, ";", "\\;")
 	value = strings.ReplaceAll(value, "#", "\\#")
