@@ -134,6 +134,13 @@ go run ./cmd/bookbind convert ./book.mp3 --cover ./cover.jpg --output ./book.m4b
 You can also set `cover: "cover.jpg"` in `bookbind.yaml`. Relative cover paths
 inside YAML are resolved relative to the YAML file.
 
+When no cover is specified, bookbind looks for `cover.jpg`, `cover.jpeg`, or
+`cover.png` next to the input and then falls back to an embedded MP3 front
+cover. The complete priority is `--cover`, metadata (including a cover selected
+in the final desktop review), a neighboring cover file, and finally the first
+embedded MP3 cover. The selected image is written to the standard MP4/iTunes
+`covr` atom as an attached picture for Apple Books and common M4B players.
+
 Example metadata:
 
 ```yaml

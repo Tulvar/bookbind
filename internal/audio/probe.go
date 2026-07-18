@@ -78,16 +78,21 @@ type ffprobeOutput struct {
 }
 
 type ffprobeStream struct {
-	CodecType     string `json:"codec_type"`
-	CodecName     string `json:"codec_name"`
-	Duration      string `json:"duration"`
-	BitRate       string `json:"bit_rate"`
-	SampleRate    string `json:"sample_rate"`
-	SampleFormat  string `json:"sample_fmt"`
-	Channels      int    `json:"channels"`
-	ChannelLayout string `json:"channel_layout"`
-	TimeBase      string `json:"time_base"`
-	ReadPackets   string `json:"nb_read_packets"`
+	CodecType     string             `json:"codec_type"`
+	CodecName     string             `json:"codec_name"`
+	Duration      string             `json:"duration"`
+	BitRate       string             `json:"bit_rate"`
+	SampleRate    string             `json:"sample_rate"`
+	SampleFormat  string             `json:"sample_fmt"`
+	Channels      int                `json:"channels"`
+	ChannelLayout string             `json:"channel_layout"`
+	TimeBase      string             `json:"time_base"`
+	ReadPackets   string             `json:"nb_read_packets"`
+	Disposition   ffprobeDisposition `json:"disposition"`
+}
+
+type ffprobeDisposition struct {
+	AttachedPic int `json:"attached_pic"`
 }
 
 type ffprobeFormat struct {
@@ -127,25 +132,37 @@ func (o ffprobeOutput) probeResult() ProbeResult {
 	}
 
 	audioStreams := 0
+	hasAttachedPicture := false
+	attachedPictureStream := 0
+	videoStream := 0
 	for _, stream := range o.Streams {
 		if stream.CodecType == "audio" {
 			audioStreams++
 		}
+		if stream.CodecType == "video" {
+			if !hasAttachedPicture && stream.Disposition.AttachedPic != 0 {
+				hasAttachedPicture = true
+				attachedPictureStream = videoStream
+			}
+			videoStream++
+		}
 	}
 
 	return ProbeResult{
-		Duration:        duration,
-		Codec:           audioStream.CodecName,
-		Bitrate:         bitrate,
-		SampleRate:      parseInt(audioStream.SampleRate),
-		SampleFormat:    audioStream.SampleFormat,
-		Channels:        audioStream.Channels,
-		ChannelLayout:   audioStream.ChannelLayout,
-		TimeBase:        audioStream.TimeBase,
-		AudioStreams:    audioStreams,
-		NonAudioStreams: len(o.Streams) - audioStreams,
-		Tags:            embeddedTags(o.Format.Tags),
-		Chapters:        chapters(o.Chapters),
+		Duration:              duration,
+		Codec:                 audioStream.CodecName,
+		Bitrate:               bitrate,
+		SampleRate:            parseInt(audioStream.SampleRate),
+		SampleFormat:          audioStream.SampleFormat,
+		Channels:              audioStream.Channels,
+		ChannelLayout:         audioStream.ChannelLayout,
+		TimeBase:              audioStream.TimeBase,
+		AudioStreams:          audioStreams,
+		NonAudioStreams:       len(o.Streams) - audioStreams,
+		HasAttachedPicture:    hasAttachedPicture,
+		AttachedPictureStream: attachedPictureStream,
+		Tags:                  embeddedTags(o.Format.Tags),
+		Chapters:              chapters(o.Chapters),
 	}
 }
 

@@ -71,7 +71,11 @@ func (a *App) Convert(ctx context.Context, req ConvertRequest) (ConvertResult, e
 	if req.MetadataOverride {
 		book = overrideBook(book, req.Metadata)
 	}
-	coverPath, err := resolveCoverPath(ctx, req.CoverPath, req.MetadataPath, book)
+	coverCandidate := strings.TrimSpace(req.CoverPath)
+	if coverCandidate == "" && strings.TrimSpace(book.Cover) == "" {
+		coverCandidate = localCoverPath(input.Path)
+	}
+	coverPath, err := resolveCoverPath(ctx, coverCandidate, req.MetadataPath, book)
 	if err != nil {
 		return ConvertResult{}, err
 	}
@@ -104,6 +108,15 @@ func (a *App) Convert(ctx context.Context, req ConvertRequest) (ConvertResult, e
 		DryRun:       req.DryRun,
 		Command:      build.Command,
 	}, nil
+}
+
+func localCoverPath(inputPath string) string {
+	dir := metadataTemplateDir(inputPath)
+	name := defaultCover(dir)
+	if name == "" {
+		return ""
+	}
+	return filepath.Join(dir, name)
 }
 
 func loadMetadata(path string) (metadata.Book, error) {
