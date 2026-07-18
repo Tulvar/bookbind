@@ -61,7 +61,8 @@ func TestFFMetadataDocumentWritesBookTags(t *testing.T) {
 		"media_type=2",
 		"artist=Sergey Lukyanenko",
 		"composer=Reader",
-		`album=Watches \#1`,
+		"album=Watches",
+		"track=1",
 		"genre=Fantasy",
 		`description=Description\nNarrator: Reader\nTranslator: Translator\nPublisher: Publisher`,
 		`synopsis=Description\nNarrator: Reader\nTranslator: Translator\nPublisher: Publisher`,
@@ -70,6 +71,23 @@ func TestFFMetadataDocumentWritesBookTags(t *testing.T) {
 		if !strings.Contains(got, want) {
 			t.Fatalf("metadata does not contain %q:\n%s", want, got)
 		}
+	}
+	if strings.Contains(got, `album=Watches \#1`) {
+		t.Fatalf("metadata embeds the series index in album:\n%s", got)
+	}
+}
+
+func TestFFMetadataDocumentPreservesSeriesTrackTotal(t *testing.T) {
+	got := FFMetadataDocument(metadata.Book{
+		Series:      "Harry Potter",
+		SeriesIndex: "1/12",
+	}, nil)
+
+	if !strings.Contains(got, "album=Harry Potter\n") {
+		t.Fatalf("metadata does not contain the series album:\n%s", got)
+	}
+	if !strings.Contains(got, "track=1/12\n") {
+		t.Fatalf("metadata does not contain the series track total:\n%s", got)
 	}
 }
 

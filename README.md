@@ -152,6 +152,8 @@ The M4B writer keeps the standard iTunes/MP4 tags used by Apple Books and common
 audiobook players. The language is stored on the audio track. Subtitle is also
 included in the displayed title, while narrator, translator, and publisher are
 copied to the long description when no portable dedicated audiobook tag exists.
+Series is stored in the standard `album` atom, and `series_index` is stored
+separately as `track`/`trkn` so Apple Books can sort books within a series.
 
 ## Development
 
