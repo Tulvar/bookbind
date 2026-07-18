@@ -195,6 +195,63 @@ func TestResolveInteractiveMetadataRequiresSelect(t *testing.T) {
 	}
 }
 
+func TestRunConvertManualMetadataOverridesEmbeddedTags(t *testing.T) {
+	dir := t.TempDir()
+	inputPath := filepath.Join(dir, "book.mp3")
+	metadataPath := filepath.Join(dir, "manual.yaml")
+	if err := os.WriteFile(inputPath, []byte("test"), 0o644); err != nil {
+		t.Fatalf("WriteFile() error = %v", err)
+	}
+	if err := os.WriteFile(metadataPath, []byte("title: Manual Title\nauthor: Manual Author\n"), 0o644); err != nil {
+		t.Fatalf("WriteFile() error = %v", err)
+	}
+
+	var output bytes.Buffer
+	err := runConvert(context.Background(), newCLIInteractiveTestAppWithTags(audio.EmbeddedTags{
+		Title:  "Embedded Title",
+		Artist: "Embedded Author",
+	}), []string{
+		inputPath,
+		"--metadata", metadataPath,
+		"--dry-run",
+	}, &output)
+	if err != nil {
+		t.Fatalf("runConvert() error = %v", err)
+	}
+
+	if !strings.Contains(output.String(), "Title: Manual Title\n") {
+		t.Fatalf("manual metadata did not override embedded tags:\n%s", output.String())
+	}
+}
+
+func TestRunConvertInteractiveMetadataDoesNotOverrideEmbeddedTags(t *testing.T) {
+	dir := t.TempDir()
+	inputPath := filepath.Join(dir, "book.mp3")
+	metadataPath := filepath.Join(dir, "selected.yaml")
+	if err := os.WriteFile(inputPath, []byte("test"), 0o644); err != nil {
+		t.Fatalf("WriteFile() error = %v", err)
+	}
+
+	var output bytes.Buffer
+	err := runConvert(context.Background(), newCLIInteractiveTestAppWithTags(audio.EmbeddedTags{
+		Title:  "Embedded Title",
+		Artist: "Embedded Author",
+	}), []string{
+		inputPath,
+		"--interactive",
+		"--select", "1",
+		"--metadata", metadataPath,
+		"--dry-run",
+	}, &output)
+	if err != nil {
+		t.Fatalf("runConvert() error = %v", err)
+	}
+
+	if !strings.Contains(output.String(), "Title: Embedded Title\n") {
+		t.Fatalf("interactive provider metadata overrode embedded tags:\n%s", output.String())
+	}
+}
+
 func TestSplitProviderList(t *testing.T) {
 	got := splitProviderList(" openlibrary, googlebooks,, ")
 	want := []string{"openlibrary", "googlebooks"}
@@ -430,10 +487,14 @@ func TestPrintChapters(t *testing.T) {
 }
 
 func newCLIInteractiveTestApp() *app.App {
+	return newCLIInteractiveTestAppWithTags(audio.EmbeddedTags{})
+}
+
+func newCLIInteractiveTestAppWithTags(tags audio.EmbeddedTags) *app.App {
 	builder := m4b.NewBuilder("ffmpeg")
 	builder.Runner = noopRunner{}
 	return app.New(
-		app.WithInspector(audio.NewInspector(audio.WithProber(cliTestProber{}))),
+		app.WithInspector(audio.NewInspector(audio.WithProber(cliTestProber{tags: tags}))),
 		app.WithBuilder(builder),
 		app.WithProviders(providers.NewRegistry(local.New([]providers.Candidate{
 			{
@@ -446,14 +507,17 @@ func newCLIInteractiveTestApp() *app.App {
 	)
 }
 
-type cliTestProber struct{}
+type cliTestProber struct {
+	tags audio.EmbeddedTags
+}
 
-func (cliTestProber) Probe(context.Context, string) (audio.ProbeResult, error) {
+func (p cliTestProber) Probe(context.Context, string) (audio.ProbeResult, error) {
 	return audio.ProbeResult{
 		Duration: time.Second,
 		Codec:    "mp3",
 		Bitrate:  128000,
 		Channels: 2,
+		Tags:     p.tags,
 	}, nil
 }
 
