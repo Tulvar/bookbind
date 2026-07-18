@@ -685,7 +685,7 @@ Chapter 003 — 00:20:00
 3. подготовить ffmetadata с chapters
 4. проверить совместимость потоков для concat demuxer; несовместимые MP3
    декодировать отдельно и объединить через audio concat filter
-5. вызвать ffmpeg
+5. вызвать ffmpeg с `-movflags +faststart`, чтобы `moov` оказался до `mdat`
 6. проверить выходной m4b через ffprobe
 ```
 

@@ -33,6 +33,9 @@ func TestBuildDryRunSingleFilePlansCommand(t *testing.T) {
 	if !containsInOrder(result.Command, "-map", "0:a", "-map_metadata", "1") {
 		t.Fatalf("command does not map metadata: %#v", result.Command)
 	}
+	if !containsInOrder(result.Command, "-movflags", "+faststart", "book.m4b") {
+		t.Fatalf("command does not enable faststart: %#v", result.Command)
+	}
 }
 
 func TestBuildRunsFFmpeg(t *testing.T) {
@@ -315,6 +318,9 @@ func TestBuildDirectoryUsesConcatDemuxerForCompatibleStreams(t *testing.T) {
 	}
 	if !containsInOrder(result.Command, "-map_metadata", "1", "-map_chapters", "1") {
 		t.Fatalf("command does not map ffmetadata chapters: %#v", result.Command)
+	}
+	if !containsInOrder(result.Command, "-movflags", "+faststart", "book.m4b") {
+		t.Fatalf("command does not enable faststart: %#v", result.Command)
 	}
 }
 

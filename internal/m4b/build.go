@@ -196,6 +196,7 @@ func (b *Builder) command(req BuildRequest) ([]string, func(), error) {
 			args = append(args, "-map_chapters", "1")
 		}
 		args = appendCoverArgs(args, req.CoverPath)
+		args = append(args, "-movflags", "+faststart")
 		args = append(args, req.OutputPath)
 		return append([]string{b.FFmpegPath}, args...), cleanup, nil
 	}
@@ -259,6 +260,7 @@ func (b *Builder) command(req BuildRequest) ([]string, func(), error) {
 	)
 	args = appendAudioLanguage(args, req.Metadata.Language)
 	args = appendCoverArgs(args, req.CoverPath)
+	args = append(args, "-movflags", "+faststart")
 	args = append(args, req.OutputPath)
 	return append([]string{b.FFmpegPath}, args...), cleanup, nil
 }
