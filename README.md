@@ -82,6 +82,8 @@ before the final AAC encode.
 Conversion is written to a temporary M4B file next to the requested output and
 published only after FFmpeg finishes successfully. A failed or cancelled run
 keeps an existing output unchanged and removes the temporary file.
+On Unix, a new M4B keeps the temporary file's owner-only permissions.
+Replacing an existing regular M4B preserves its permission bits.
 The MP4 `moov` atom is moved to the beginning of the completed M4B so players can
 open metadata and chapters without first reading the entire file.
 

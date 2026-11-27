@@ -31,20 +31,16 @@ func publishTemporaryOutput(temporaryPath, outputPath string, overwrite bool) er
 		return fmt.Errorf("ffmpeg produced an empty or invalid temporary output: %s", temporaryPath)
 	}
 
-	mode := os.FileMode(0o644)
-	if overwrite {
-		if current, statErr := os.Stat(outputPath); statErr == nil && current.Mode().IsRegular() {
-			mode = current.Mode().Perm()
-		}
-	}
-	if err := os.Chmod(temporaryPath, mode); err != nil {
-		return fmt.Errorf("set temporary output permissions %s: %w", temporaryPath, err)
-	}
 	if err := syncFile(temporaryPath); err != nil {
 		return err
 	}
 
 	if overwrite {
+		if current, statErr := os.Lstat(outputPath); statErr == nil && current.Mode().IsRegular() {
+			if err := os.Chmod(temporaryPath, current.Mode().Perm()); err != nil {
+				return fmt.Errorf("preserve output permissions %s: %w", outputPath, err)
+			}
+		}
 		err = os.Rename(temporaryPath, outputPath)
 	} else {
 		err = renameNoReplace(temporaryPath, outputPath)
