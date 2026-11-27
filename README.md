@@ -105,6 +105,8 @@ go run ./cmd/bookbind cache clean
 ```
 
 Metadata provider responses are cached under the local bookbind cache directory.
+Cache commands list and remove recognized provider responses and cover images.
+Other files and folders are preserved, including when a custom path is supplied.
 
 Use manual metadata:
 
