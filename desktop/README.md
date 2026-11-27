@@ -27,6 +27,7 @@ wails build
 The frontend is a React/TypeScript app in `frontend/`. The Go bridge lives in
 `app.go` and reuses the root module through the local `replace` directive in
 `go.mod`.
+Run `npm test` from `frontend/` to check asynchronous metadata previews.
 
 ## Release packages
 
