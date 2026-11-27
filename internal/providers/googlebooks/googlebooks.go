@@ -3,6 +3,7 @@ package googlebooks
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -72,14 +73,7 @@ func (p *Provider) Search(ctx context.Context, query providers.SearchQuery) ([]p
 		return nil, err
 	}
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, requestURL, nil)
-	if err != nil {
-		return nil, err
-	}
-	req.Header.Set("Accept", "application/json")
-	req.Header.Set("User-Agent", "bookbind")
-
-	resp, err := p.httpClient.Do(req)
+	resp, err := p.request(ctx, requestURL)
 	if err != nil {
 		return nil, err
 	}
@@ -117,14 +111,7 @@ func (p *Provider) Get(ctx context.Context, id string) (providers.Candidate, err
 		requestURL += "?" + values.Encode()
 	}
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, requestURL, nil)
-	if err != nil {
-		return providers.Candidate{}, err
-	}
-	req.Header.Set("Accept", "application/json")
-	req.Header.Set("User-Agent", "bookbind")
-
-	resp, err := p.httpClient.Do(req)
+	resp, err := p.request(ctx, requestURL)
 	if err != nil {
 		return providers.Candidate{}, err
 	}
@@ -139,6 +126,39 @@ func (p *Provider) Get(ctx context.Context, id string) (providers.Candidate, err
 		return providers.Candidate{}, fmt.Errorf("decode googlebooks response: %w", err)
 	}
 	return item.candidate(p.Name()), nil
+}
+
+func (p *Provider) request(ctx context.Context, requestURL string) (*http.Response, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, requestURL, nil)
+	if err != nil {
+		return nil, p.requestError(err)
+	}
+	req.Header.Set("Accept", "application/json")
+	req.Header.Set("User-Agent", "bookbind")
+	resp, err := p.httpClient.Do(req)
+	if err != nil {
+		return nil, p.requestError(err)
+	}
+	return resp, nil
+}
+
+func (p *Provider) requestError(err error) error {
+	// net/http includes the request URL (with the key in its query) in url.Error.
+	var urlErr *url.Error
+	if errors.As(err, &urlErr) {
+		err = urlErr.Err
+	}
+	if p.apiKey != "" {
+		redacted := strings.NewReplacer(
+			p.apiKey, "[redacted]",
+			url.QueryEscape(p.apiKey), "[redacted]",
+			url.PathEscape(p.apiKey), "[redacted]",
+		).Replace(err.Error())
+		if redacted != err.Error() {
+			return fmt.Errorf("googlebooks request: %s", redacted)
+		}
+	}
+	return fmt.Errorf("googlebooks request: %w", err)
 }
 
 func (p *Provider) searchURL(query providers.SearchQuery) (string, error) {
