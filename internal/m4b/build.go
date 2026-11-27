@@ -442,8 +442,18 @@ func writeConcatList(files []audio.File) (string, func(), error) {
 	listPath := filepath.Join(tempDir, "input.txt")
 	var builder strings.Builder
 	for _, file := range files {
+		// FFmpeg resolves relative entries from the concat list directory.
+		path, err := filepath.Abs(file.Path)
+		if err != nil {
+			cleanup()
+			return "", nil, fmt.Errorf("resolve concat input path %q: %w", file.Path, err)
+		}
+		if strings.ContainsAny(path, "\r\n") {
+			cleanup()
+			return "", nil, fmt.Errorf("concat input path contains a line break: %q", file.Path)
+		}
 		builder.WriteString("file '")
-		builder.WriteString(escapeConcatPath(file.Path))
+		builder.WriteString(escapeConcatPath("file:" + path))
 		builder.WriteString("'\n")
 	}
 	if err := os.WriteFile(listPath, []byte(builder.String()), 0o600); err != nil {
