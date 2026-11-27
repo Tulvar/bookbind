@@ -289,6 +289,50 @@ func TestPrepareConversionKeepsEmbeddedMetadataAndFillsMissingFields(t *testing.
 	}
 }
 
+func TestPreparedMetadataKeepsRelativeYAMLCoverForConversion(t *testing.T) {
+	dir := t.TempDir()
+	t.Chdir(dir)
+	if err := os.Mkdir("metadata", 0o700); err != nil {
+		t.Fatal(err)
+	}
+	for path, contents := range map[string]string{
+		"book.mp3":           "audio",
+		"metadata/book.yaml": "title: Book\ncover: cover.jpg\n",
+		"metadata/cover.jpg": "cover",
+	} {
+		if err := os.WriteFile(filepath.FromSlash(path), []byte(contents), 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	application := newTestApp()
+	prepared, err := application.PrepareConversion(context.Background(), PrepareConversionRequest{
+		InputPath: "book.mp3", MetadataPath: filepath.Join("metadata", "book.yaml"),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	// The reviewed form passes the prepared metadata without the YAML filename.
+	result, err := application.Convert(context.Background(), ConvertRequest{
+		InputPath: "book.mp3", Metadata: prepared.Metadata, MetadataOverride: true, DryRun: true,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := filepath.Join(dir, "metadata", "cover.jpg")
+	gotInfo, err := os.Stat(result.CoverPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	wantInfo, err := os.Stat(want)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !filepath.IsAbs(result.CoverPath) || !os.SameFile(gotInfo, wantInfo) {
+		t.Fatalf("cover = %q, want %q", result.CoverPath, want)
+	}
+}
+
 func TestPrepareConversionUsesDirectoryEmbeddedBookTags(t *testing.T) {
 	dir := t.TempDir()
 	for _, name := range []string{"01.mp3", "02.mp3"} {

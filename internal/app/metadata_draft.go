@@ -2,6 +2,8 @@ package app
 
 import (
 	"context"
+	"fmt"
+	"path/filepath"
 	"strings"
 
 	"github.com/Tulvar/bookbind/internal/audio"
@@ -30,6 +32,15 @@ func (a *App) PrepareConversion(ctx context.Context, req PrepareConversionReques
 	book, err := a.prepareMetadata(input, req.MetadataPath, req.Metadata)
 	if err != nil {
 		return PrepareConversionResult{}, err
+	}
+
+	// The reviewed form carries metadata without the YAML filename.
+	cover := strings.TrimSpace(book.Cover)
+	if req.MetadataPath != "" && cover != "" && !isRemoteURL(cover) && !filepath.IsAbs(cover) {
+		book.Cover, err = filepath.Abs(filepath.Join(filepath.Dir(req.MetadataPath), cover))
+		if err != nil {
+			return PrepareConversionResult{}, fmt.Errorf("resolve metadata cover %q: %w", cover, err)
+		}
 	}
 
 	return PrepareConversionResult{
