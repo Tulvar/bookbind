@@ -85,7 +85,9 @@ keeps an existing output unchanged and removes the temporary file.
 The MP4 `moov` atom is moved to the beginning of the completed M4B so players can
 open metadata and chapters without first reading the entire file.
 
-Preview conversion without writing output:
+Preview conversion without writing output. A remote cover is shown as a URL and
+is downloaded only when converting. Downloads accept JPEG and PNG up to 10 MiB
+and 16 megapixels, with a 15-second timeout.
 
 ```bash
 go run ./cmd/bookbind convert ./book.mp3 --output ./book.m4b --dry-run

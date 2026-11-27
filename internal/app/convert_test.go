@@ -2,12 +2,15 @@ package app
 
 import (
 	"context"
+	"image"
+	"image/png"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"reflect"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -468,45 +471,72 @@ cover: "metadata-cover.png"
 	}
 }
 
-func TestConvertDownloadsRemoteMetadataCover(t *testing.T) {
-	dir := t.TempDir()
-	cachePath := filepath.Join(dir, "cache")
-	previousCacheDir := cacheDir
-	cacheDir = func() (string, error) { return cachePath, nil }
-	t.Cleanup(func() { cacheDir = previousCacheDir })
-
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "image/jpeg")
-		_, _ = w.Write([]byte("cover"))
+func TestConvertDryRunReportsRemoteCoverWithoutDownloading(t *testing.T) {
+	var requests atomic.Int32
+	server := httptest.NewServer(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
+		requests.Add(1)
 	}))
-	defer server.Close()
+	t.Cleanup(server.Close)
 
-	inputPath := filepath.Join(dir, "book.mp3")
-	metadataPath := filepath.Join(dir, "bookbind.yaml")
-	if err := os.WriteFile(inputPath, []byte("test"), 0o644); err != nil {
-		t.Fatalf("write input file: %v", err)
+	input := filepath.Join(t.TempDir(), "book.mp3")
+	if err := os.WriteFile(input, []byte("test"), 0o600); err != nil {
+		t.Fatal(err)
 	}
-	if err := os.WriteFile(metadataPath, []byte("title: \"Book\"\ncover: \""+server.URL+"/cover?id=book\"\n"), 0o644); err != nil {
-		t.Fatalf("write metadata file: %v", err)
-	}
-
+	coverURL := server.URL + "/cover"
 	result, err := newTestApp().Convert(context.Background(), ConvertRequest{
-		InputPath:    inputPath,
-		MetadataPath: metadataPath,
-		DryRun:       true,
+		InputPath: input,
+		Metadata:  metadata.Book{Cover: coverURL},
+		DryRun:    true,
 	})
 	if err != nil {
-		t.Fatalf("Convert() error = %v", err)
+		t.Fatal(err)
+	}
+	if result.CoverPath != coverURL || requests.Load() != 0 {
+		t.Fatalf("dry-run cover = %q, requests = %d", result.CoverPath, requests.Load())
+	}
+}
+
+func TestDownloadCoverPublishesOnlyValidImages(t *testing.T) {
+	cachePath := t.TempDir()
+	previous := cacheDir
+	cacheDir = func() (string, error) { return cachePath, nil }
+	t.Cleanup(func() { cacheDir = previous })
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/valid.jpg":
+			_ = png.Encode(w, image.NewRGBA(image.Rect(0, 0, 1, 1)))
+		case "/large":
+			w.(http.Flusher).Flush()
+			_, _ = strings.NewReader(strings.Repeat("x", maxCoverBytes+1)).WriteTo(w)
+		default:
+			_, _ = w.Write([]byte("not an image"))
+		}
+	}))
+	t.Cleanup(server.Close)
+
+	for _, path := range []string{"/large", "/invalid"} {
+		t.Run(path, func(t *testing.T) {
+			_, err := downloadCover(context.Background(), server.URL+path)
+			if err == nil {
+				t.Fatal("expected rejected download")
+			}
+			entries, err := os.ReadDir(filepath.Join(cachePath, "covers"))
+			if err != nil || len(entries) != 0 {
+				t.Fatalf("cover cache = %v, %v, want empty", entries, err)
+			}
+		})
 	}
 
-	if result.CoverPath == "" {
-		t.Fatal("CoverPath is empty, want downloaded cover")
+	got, err := downloadCover(context.Background(), server.URL+"/valid.jpg")
+	if err != nil {
+		t.Fatal(err)
 	}
-	if _, err := os.Stat(result.CoverPath); err != nil {
-		t.Fatalf("downloaded cover stat: %v", err)
+	if filepath.Dir(got) != filepath.Join(cachePath, "covers") || filepath.Ext(got) != ".png" {
+		t.Fatalf("cached cover path = %q", got)
 	}
-	if filepath.Dir(result.CoverPath) != filepath.Join(cachePath, "covers") {
-		t.Fatalf("CoverPath = %q, want cache covers dir", result.CoverPath)
+	if _, err := os.Stat(got); err != nil {
+		t.Fatal(err)
 	}
 }
 
