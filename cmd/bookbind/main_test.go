@@ -286,7 +286,11 @@ func TestRunProviders(t *testing.T) {
 
 func TestRunCacheList(t *testing.T) {
 	dir := t.TempDir()
-	if err := os.WriteFile(filepath.Join(dir, "one.cache"), []byte("123"), 0o644); err != nil {
+	name := strings.Repeat("a", 64) + ".jpg"
+	if err := os.Mkdir(filepath.Join(dir, "covers"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "covers", name), []byte("123"), 0o644); err != nil {
 		t.Fatalf("WriteFile() error = %v", err)
 	}
 
@@ -300,7 +304,7 @@ func TestRunCacheList(t *testing.T) {
 		"Cache: " + dir,
 		"Entries: 1",
 		"Size: 3 B",
-		"one.cache",
+		name,
 	} {
 		if !strings.Contains(got, want) {
 			t.Fatalf("output does not contain %q:\n%s", want, got)
@@ -310,7 +314,11 @@ func TestRunCacheList(t *testing.T) {
 
 func TestRunCacheClean(t *testing.T) {
 	dir := t.TempDir()
-	path := filepath.Join(dir, "one.cache")
+	name := strings.Repeat("a", 64) + ".jpg"
+	if err := os.Mkdir(filepath.Join(dir, "covers"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	path := filepath.Join(dir, "covers", name)
 	if err := os.WriteFile(path, []byte("123"), 0o644); err != nil {
 		t.Fatalf("WriteFile() error = %v", err)
 	}
