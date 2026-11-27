@@ -2,8 +2,10 @@ package googlebooks
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"strings"
 	"testing"
 
@@ -171,6 +173,37 @@ func TestGetAddsAPIKey(t *testing.T) {
 	}
 	if gotKey != "test-key" {
 		t.Fatalf("key = %q, want test-key", gotKey)
+	}
+}
+
+func TestRequestErrorsDoNotExposeAPIKey(t *testing.T) {
+	const apiKey = "test+/key"
+	provider := New(WithAPIKey(apiKey))
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	calls := map[string]func() error{
+		"search": func() error {
+			_, err := provider.Search(ctx, providers.SearchQuery{Title: "Book"})
+			return err
+		},
+		"get": func() error {
+			_, err := provider.Get(ctx, "volume-1")
+			return err
+		},
+	}
+	for name, call := range calls {
+		t.Run(name, func(t *testing.T) {
+			err := call()
+			if !errors.Is(err, context.Canceled) {
+				t.Fatalf("error = %v, want context cancellation", err)
+			}
+			for _, secret := range []string{apiKey, url.QueryEscape(apiKey)} {
+				if strings.Contains(err.Error(), secret) {
+					t.Fatal("error contains the API key")
+				}
+			}
+		})
 	}
 }
 

@@ -1,5 +1,6 @@
-import {useEffect, useState} from 'react';
+import {useEffect, useRef, useState} from 'react';
 import './App.css';
+import {createLatestTask} from './latestTask';
 import {
     AppVersion,
     AvailableProviders,
@@ -436,6 +437,7 @@ function App() {
     const [selectedProviders, setSelectedProviders] = useState<string[]>([]);
     const [metadataCandidates, setMetadataCandidates] = useState<MetadataCandidateView[]>([]);
     const [selectedCandidate, setSelectedCandidate] = useState<MetadataCandidateView | null>(null);
+    const [previewTask] = useState(createLatestTask);
     const [metadataPreview, setMetadataPreview] = useState<MetadataPreviewView | null>(null);
     const [conversionMetadata, setConversionMetadata] = useState<BookMetadataView | null>(null);
     const [showMetadataPrompt, setShowMetadataPrompt] = useState(false);
@@ -460,6 +462,7 @@ function App() {
     const [convertProgress, setConvertProgress] = useState<ConvertProgressEvent | null>(null);
     const [convertProgressLog, setConvertProgressLog] = useState<string[]>([]);
     const [cachePath, setCachePath] = useState('');
+    const cacheRequest = useRef(0);
     const [cacheResult, setCacheResult] = useState<CacheListView | null>(null);
     const [cacheStatus, setCacheStatus] = useState('');
     const [cacheError, setCacheError] = useState('');
@@ -584,8 +587,11 @@ function App() {
         setIsSearchingMetadata(true);
         setMetadataError('');
         setMetadataStatus('');
+        previewTask.invalidate();
         setSelectedCandidate(null);
         setMetadataPreview(null);
+        setShowMetadataPrompt(false);
+        setIsPreviewingMetadata(false);
         SearchMetadata(metadataTitle, metadataAuthor, selectedProviders, googleBooksAPIKey.trim())
             .then((result) => setMetadataCandidates((result.Candidates || []) as MetadataCandidateView[]))
             .catch((error) => {
@@ -600,14 +606,19 @@ function App() {
         setMetadataError('');
         setMetadataStatus('');
         setMetadataPreview(null);
+        setShowMetadataPrompt(false);
         setIsPreviewingMetadata(true);
-        PreviewMetadata(candidate.Provider, candidate.ID, googleBooksAPIKey.trim())
-            .then((result) => {
-                setMetadataPreview(result as MetadataPreviewView);
-                setShowMetadataPrompt(true);
-            })
-            .catch((error) => setMetadataError(String(error)))
-            .finally(() => setIsPreviewingMetadata(false));
+        void previewTask.run(
+            () => PreviewMetadata(candidate.Provider, candidate.ID, googleBooksAPIKey.trim()),
+            {
+                success: (result) => {
+                    setMetadataPreview(result);
+                    setShowMetadataPrompt(true);
+                },
+                failure: (error) => setMetadataError(String(error)),
+                finish: () => setIsPreviewingMetadata(false),
+            },
+        );
     }
 
     function useMetadataForConvert(book: BookMetadataView) {
@@ -717,31 +728,65 @@ function App() {
             .catch((error) => setConvertError(String(error)));
     }
 
-    function refreshCache() {
-        setIsCacheBusy(true);
-        setCacheError('');
+    function updateCachePath(path: string) {
+        cacheRequest.current++;
+        setCachePath(path);
+        setCacheResult(null);
         setCacheStatus('');
-        ListCache(cachePath)
-            .then((result) => setCacheResult(result as CacheListView))
-            .catch((error) => {
-                setCacheResult(null);
-                setCacheError(String(error));
-            })
-            .finally(() => setIsCacheBusy(false));
+        setCacheError('');
+        setIsCacheBusy(false);
     }
 
-    function cleanCache() {
+    async function refreshCache() {
+        const request = ++cacheRequest.current;
         setIsCacheBusy(true);
         setCacheError('');
         setCacheStatus('');
-        CleanCache(cachePath)
-            .then((result) => {
+        try {
+            const result = await ListCache(cachePath);
+            if (request === cacheRequest.current) {
+                setCacheResult(result);
+            }
+        } catch (error) {
+            if (request === cacheRequest.current) {
+                setCacheResult(null);
+                setCacheError(String(error));
+            }
+        } finally {
+            if (request === cacheRequest.current) {
+                setIsCacheBusy(false);
+            }
+        }
+    }
+
+    async function cleanCache() {
+        if (!cacheResult || cacheResult.Entries.length === 0 || isCacheBusy) {
+            return;
+        }
+        const reviewedPath = cacheResult.Path;
+        const request = ++cacheRequest.current;
+        setIsCacheBusy(true);
+        setCacheResult(null);
+        setCacheError('');
+        setCacheStatus('');
+        try {
+            const result = await CleanCache(reviewedPath);
+            if (request === cacheRequest.current) {
                 setCacheStatus(`${copy.removed} ${result.Removed} ${copy.entries} · ${result.RemovedSize}`);
-                return ListCache(cachePath);
-            })
-            .then((result) => setCacheResult(result as CacheListView))
-            .catch((error) => setCacheError(String(error)))
-            .finally(() => setIsCacheBusy(false));
+                const updated = await ListCache(reviewedPath);
+                if (request === cacheRequest.current) {
+                    setCacheResult(updated);
+                }
+            }
+        } catch (error) {
+            if (request === cacheRequest.current) {
+                setCacheError(String(error));
+            }
+        } finally {
+            if (request === cacheRequest.current) {
+                setIsCacheBusy(false);
+            }
+        }
     }
 
     function convertSummary(result: ConvertView) {
@@ -1008,11 +1053,12 @@ function App() {
                                         {copy.cachePath}
                                         <div className="field-with-button">
                                             <input
-                                                onChange={(event) => setCachePath(event.target.value)}
+                                                disabled={isCacheBusy}
+                                                onChange={(event) => updateCachePath(event.target.value)}
                                                 placeholder={copy.defaultCache}
                                                 value={cachePath}
                                             />
-                                            <button className="secondary-button" onClick={() => selectPath(SelectCacheDirectory, setCachePath)} type="button">
+                                            <button className="secondary-button" disabled={isCacheBusy} onClick={() => selectPath(SelectCacheDirectory, updateCachePath)} type="button">
                                                 {copy.browse}
                                             </button>
                                         </div>
@@ -1255,6 +1301,7 @@ function App() {
                                     return (
                                         <button
                                             className={selected ? 'candidate-row selected' : 'candidate-row'}
+                                            disabled={isSearchingMetadata}
                                             key={`${candidate.Provider}:${candidate.ID}`}
                                             onClick={() => selectMetadataCandidate(candidate)}
                                             type="button"

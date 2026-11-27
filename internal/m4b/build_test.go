@@ -71,6 +71,15 @@ func TestBuildRunsFFmpeg(t *testing.T) {
 	if data, readErr := os.ReadFile(outputPath); readErr != nil || string(data) != "complete" {
 		t.Fatalf("published output = %q, error = %v", data, readErr)
 	}
+	if runtime.GOOS != "windows" {
+		info, err := os.Stat(outputPath)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if mode := info.Mode().Perm(); mode&0o077 != 0 {
+			t.Fatalf("new output permissions = %o, want owner-only permissions", mode)
+		}
+	}
 }
 
 func TestBuildFailurePreservesExistingOutput(t *testing.T) {

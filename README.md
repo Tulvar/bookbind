@@ -82,16 +82,20 @@ before the final AAC encode.
 Conversion is written to a temporary M4B file next to the requested output and
 published only after FFmpeg finishes successfully. A failed or cancelled run
 keeps an existing output unchanged and removes the temporary file.
+On Unix, a new M4B keeps the temporary file's owner-only permissions.
+Replacing an existing regular M4B preserves its permission bits.
 The MP4 `moov` atom is moved to the beginning of the completed M4B so players can
 open metadata and chapters without first reading the entire file.
 
-Preview conversion without writing output:
+Preview conversion without writing output. A remote cover is shown as a URL and
+is downloaded only when converting. Downloads accept JPEG and PNG up to 10 MiB
+and 16 megapixels, with a 15-second timeout.
 
 ```bash
 go run ./cmd/bookbind convert ./book.mp3 --output ./book.m4b --dry-run
 ```
 
-Create synthetic chapters for a single MP3:
+Create up to 10,000 synthetic chapters for a single MP3:
 
 ```bash
 go run ./cmd/bookbind convert ./book.mp3 --chapter-every 10m --output ./book.m4b
@@ -105,6 +109,8 @@ go run ./cmd/bookbind cache clean
 ```
 
 Metadata provider responses are cached under the local bookbind cache directory.
+Cache commands list and remove recognized provider responses and cover images.
+Other files and folders are preserved, including when a custom path is supplied.
 
 Use manual metadata:
 
@@ -137,6 +143,8 @@ go run ./cmd/bookbind convert ./book.mp3 --cover ./cover.jpg --output ./book.m4b
 
 You can also set `cover: "cover.jpg"` in `bookbind.yaml`. Relative cover paths
 inside YAML are resolved relative to the YAML file.
+The desktop review form shows the resolved local path so that the same cover is
+used when conversion starts.
 
 When no cover is specified, bookbind looks for `cover.jpg`, `cover.jpeg`, or
 `cover.png` next to the input and then falls back to an embedded MP3 front
