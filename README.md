@@ -95,7 +95,7 @@ and 16 megapixels, with a 15-second timeout.
 go run ./cmd/bookbind convert ./book.mp3 --output ./book.m4b --dry-run
 ```
 
-Create synthetic chapters for a single MP3:
+Create up to 10,000 synthetic chapters for a single MP3:
 
 ```bash
 go run ./cmd/bookbind convert ./book.mp3 --chapter-every 10m --output ./book.m4b

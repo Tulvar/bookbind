@@ -1,9 +1,31 @@
 package chapters
 
 import (
+	"strings"
 	"testing"
 	"time"
 )
+
+func TestSyntheticLimitsChapterCount(t *testing.T) {
+	interval := time.Millisecond
+	total := 10_000 * interval
+	got, err := Synthetic(total, interval)
+	if err != nil || len(got) != 10_000 {
+		t.Fatalf("at limit: got %d chapters, err = %v", len(got), err)
+	}
+	got, err = Synthetic(total+time.Nanosecond, interval)
+	if len(got) != 0 || err == nil || !strings.Contains(err.Error(), "10001 chapters") {
+		t.Fatalf("above limit: got %d chapters, err = %v", len(got), err)
+	}
+}
+
+func TestSyntheticClampsEndWithoutOverflow(t *testing.T) {
+	const total = time.Duration(1<<63 - 1)
+	got, err := Synthetic(total, total-1)
+	if err != nil || len(got) != 2 || got[1].End != total {
+		t.Fatalf("Synthetic() = %+v, %v", got, err)
+	}
+}
 
 func TestSyntheticChapters(t *testing.T) {
 	got, err := Synthetic(25*time.Minute, 10*time.Minute)
