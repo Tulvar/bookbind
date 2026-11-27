@@ -97,7 +97,7 @@ jobs:
             os: ubuntu-22.04
             platform: linux/amd64
           - target: darwin-amd64
-            os: macos-latest
+            os: macos-15-intel
             platform: darwin/amd64
           - target: darwin-arm64
             os: macos-latest
@@ -150,11 +150,52 @@ jobs:
           echo "version=${version}" >> "$GITHUB_OUTPUT"
 
       - name: Install Wails
-        run: go install github.com/wailsapp/wails/v2/cmd/wails@v2.12.0
+        run: go install github.com/wailsapp/wails/v2/cmd/wails@v2.17.1
 
       - name: Build desktop app
         working-directory: desktop
-        run: wails build -platform ${{ matrix.platform }} -ldflags "-s -w -X github.com/Tulvar/bookbind/pkg/version.Version=${{ steps.version.outputs.version }}"
+        env:
+          CGO_CFLAGS: ${{ runner.os == 'macOS' && '-mmacosx-version-min=13.0' || '' }}
+          CGO_LDFLAGS: ${{ runner.os == 'macOS' && '-mmacosx-version-min=13.0' || '' }}
+        run: wails build -platform ${{ matrix.platform }} -ldflags "-s -w -X github.com/Tulvar/bookbind/pkg/version.Version=${{ steps.version.outputs.version }} -X main.bundledFFmpeg=1"
+
+      - name: Install NASM on Linux
+        if: runner.os == 'Linux'
+        run: sudo apt-get install -y --no-install-recommends nasm
+
+      - name: Install NASM on Intel macOS
+        if: matrix.target == 'darwin-amd64'
+        run: command -v nasm || brew install nasm
+
+      - name: Set up the Windows FFmpeg toolchain
+        if: runner.os == 'Windows'
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: UCRT64
+          update: true
+          install: curl make xz mingw-w64-ucrt-x86_64-gcc mingw-w64-ucrt-x86_64-nasm
+
+      - name: Bundle FFmpeg on Linux
+        if: runner.os == 'Linux'
+        run: bash desktop/build/bundle-ffmpeg.sh desktop/build/bin
+
+      - name: Bundle FFmpeg on macOS
+        if: runner.os == 'macOS'
+        shell: bash
+        run: |
+          app=desktop/build/bin/bookbind-desktop.app
+          bash desktop/build/bundle-ffmpeg.sh "$app/Contents/Resources"
+          codesign --force --sign - "$app/Contents/Resources/bin/ffmpeg"
+          codesign --force --sign - "$app/Contents/Resources/bin/ffprobe"
+          codesign --force --sign - "$app"
+          codesign --verify --deep --strict "$app"
+
+      - name: Bundle FFmpeg on Windows
+        if: runner.os == 'Windows'
+        shell: msys2 {0}
+        env:
+          FFMPEG_BUILD_JOBS: "4"
+        run: bash -o igncr desktop/build/bundle-ffmpeg.sh desktop/build/bin
 
       - name: Package Linux desktop
         if: runner.os == 'Linux'
@@ -163,7 +204,7 @@ jobs:
           mkdir -p dist
           tar -czf "dist/bookbind-desktop-${{ steps.version.outputs.version }}-${{ matrix.target }}.tar.gz" \
             -C desktop/build/bin \
-            bookbind-desktop
+            bookbind-desktop bin ffmpeg-source
 
       - name: Package macOS desktop
         if: runner.os == 'macOS'
@@ -179,14 +220,10 @@ jobs:
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force dist | Out-Null
-          Copy-Item `
-            desktop/build/bin/bookbind-desktop.exe `
-            "dist/bookbind-desktop-${{ steps.version.outputs.version }}-${{ matrix.target }}.exe"
           Compress-Archive `
-            -Path "dist/bookbind-desktop-${{ steps.version.outputs.version }}-${{ matrix.target }}.exe" `
+            -Path desktop/build/bin/bookbind-desktop.exe, desktop/build/bin/bin, desktop/build/bin/ffmpeg-source `
             -DestinationPath "dist/bookbind-desktop-${{ steps.version.outputs.version }}-${{ matrix.target }}.zip" `
             -Force
-          Remove-Item "dist/bookbind-desktop-${{ steps.version.outputs.version }}-${{ matrix.target }}.exe"
 
       - name: Upload desktop artifact
         uses: actions/upload-artifact@v4

@@ -170,6 +170,9 @@ separately as `track`/`trkn` so Apple Books can sort books within a series.
 
 ## Development
 
+Builds use Go 1.27.4.
+The resulting macOS binaries require macOS 13 Ventura or later.
+
 Run the checks used by CI:
 
 ```bash
@@ -196,7 +199,12 @@ The release workflow builds CLI artifacts named with the version, for example
 `bookbind-v0.4.2-linux-amd64` and `bookbind-v0.4.2-windows-amd64.exe`.
 
 It also builds desktop artifacts named like
-`bookbind-desktop-v0.4.2-darwin-arm64.zip`.
+`bookbind-desktop-v0.4.2-darwin-arm64.zip`. Desktop release archives include
+FFmpeg 9.1 and its matching `ffprobe`; local conversion works offline without
+installing FFmpeg. On Linux and Windows, extract the entire archive and keep
+the `bin/` directory next to the app. On macOS, the tools are inside the
+`.app` bundle. The release includes the corresponding LGPL source and build
+configuration.
 
 Desktop builds can also be created manually on machines with the matching
 operating system:
@@ -211,10 +219,10 @@ wails build -platform windows/amd64 -ldflags "-s -w -X github.com/Tulvar/bookbin
 For Wails desktop releases, native builds are preferred: Linux on Linux, macOS
 on macOS, and Windows on Windows.
 
-`ffmpeg` and `ffprobe` are required for real inspect/convert runs. Bookbind
-checks `PATH` and common install locations such as `/opt/homebrew/bin` and
-`/usr/local/bin`, so macOS desktop builds can find Homebrew ffmpeg even when the
-app is opened from Finder.
+The CLI and local Wails development builds need `ffmpeg` and `ffprobe`.
+They check `PATH` and common install locations such as `/opt/homebrew/bin` and
+`/usr/local/bin`. See [desktop packaging](desktop/README.md) for the steps
+used to build with the bundled tools.
 
 ## Milestones
 
