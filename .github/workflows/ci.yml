@@ -108,6 +108,10 @@ jobs:
         working-directory: desktop/frontend
         run: npm ci
 
+      - name: Test frontend
+        working-directory: desktop/frontend
+        run: npm test
+
       - name: Build frontend
         working-directory: desktop/frontend
         run: npm run build

@@ -1,5 +1,6 @@
 import {useEffect, useRef, useState} from 'react';
 import './App.css';
+import {createLatestTask} from './latestTask';
 import {
     AppVersion,
     AvailableProviders,
@@ -436,6 +437,7 @@ function App() {
     const [selectedProviders, setSelectedProviders] = useState<string[]>([]);
     const [metadataCandidates, setMetadataCandidates] = useState<MetadataCandidateView[]>([]);
     const [selectedCandidate, setSelectedCandidate] = useState<MetadataCandidateView | null>(null);
+    const [previewTask] = useState(createLatestTask);
     const [metadataPreview, setMetadataPreview] = useState<MetadataPreviewView | null>(null);
     const [conversionMetadata, setConversionMetadata] = useState<BookMetadataView | null>(null);
     const [showMetadataPrompt, setShowMetadataPrompt] = useState(false);
@@ -585,8 +587,11 @@ function App() {
         setIsSearchingMetadata(true);
         setMetadataError('');
         setMetadataStatus('');
+        previewTask.invalidate();
         setSelectedCandidate(null);
         setMetadataPreview(null);
+        setShowMetadataPrompt(false);
+        setIsPreviewingMetadata(false);
         SearchMetadata(metadataTitle, metadataAuthor, selectedProviders, googleBooksAPIKey.trim())
             .then((result) => setMetadataCandidates((result.Candidates || []) as MetadataCandidateView[]))
             .catch((error) => {
@@ -601,14 +606,19 @@ function App() {
         setMetadataError('');
         setMetadataStatus('');
         setMetadataPreview(null);
+        setShowMetadataPrompt(false);
         setIsPreviewingMetadata(true);
-        PreviewMetadata(candidate.Provider, candidate.ID, googleBooksAPIKey.trim())
-            .then((result) => {
-                setMetadataPreview(result as MetadataPreviewView);
-                setShowMetadataPrompt(true);
-            })
-            .catch((error) => setMetadataError(String(error)))
-            .finally(() => setIsPreviewingMetadata(false));
+        void previewTask.run(
+            () => PreviewMetadata(candidate.Provider, candidate.ID, googleBooksAPIKey.trim()),
+            {
+                success: (result) => {
+                    setMetadataPreview(result);
+                    setShowMetadataPrompt(true);
+                },
+                failure: (error) => setMetadataError(String(error)),
+                finish: () => setIsPreviewingMetadata(false),
+            },
+        );
     }
 
     function useMetadataForConvert(book: BookMetadataView) {
@@ -1291,6 +1301,7 @@ function App() {
                                     return (
                                         <button
                                             className={selected ? 'candidate-row selected' : 'candidate-row'}
+                                            disabled={isSearchingMetadata}
                                             key={`${candidate.Provider}:${candidate.ID}`}
                                             onClick={() => selectMetadataCandidate(candidate)}
                                             type="button"
