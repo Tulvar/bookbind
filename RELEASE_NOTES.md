@@ -1,5 +1,13 @@
 # Release Notes
 
+## Unreleased
+
+- Desktop release archives for macOS, Windows and Linux include FFmpeg 9.1
+  and its matching `ffprobe`. Local conversion works offline without a
+  separate FFmpeg installation.
+- Builds use Go 1.27.4 and Wails 2.17.1. macOS builds require macOS 13 Ventura
+  or later.
+
 ## v0.4.2
 
 `v0.4.2` improves the desktop conversion flow after the first release.

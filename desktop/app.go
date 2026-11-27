@@ -29,11 +29,14 @@ type App struct {
 	convertID     int
 }
 
-func NewApp() *App {
-	builder := m4b.NewBuilder("ffmpeg")
+func NewApp(ffmpegPath, ffprobePath string) *App {
+	builder := m4b.NewBuilder(ffmpegPath)
 	builder.Runner = &desktopProgressRunner{}
 	return &App{
-		core: coreapp.New(coreapp.WithBuilder(builder)),
+		core: coreapp.New(
+			coreapp.WithBuilder(builder),
+			coreapp.WithInspector(audio.NewInspector(audio.WithProber(audio.NewFFProbe(ffprobePath)))),
+		),
 	}
 }
 
